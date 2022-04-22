@@ -531,7 +531,8 @@ class Spatial_Metric3(NormalIG):
                 # if _k<len(self.observed_paths)-5:continue
                 sqrt_Lambda_ = lambda_**.5
                 path_arc_indexes = list(obs_k.keys())
-                AmP = [i for i in range(len(self.mu)) if not i in path_arc_indexes]
+                AmP = [i for i in range(len(self.mu)) 
+                       if not i in path_arc_indexes]
                 hat_sigma_2 = self.get_hat_sigma_2(path_arc_indexes,
                                                    mu_,sqrt_Lambda_,AmP,obs_k)
                 # self.reversed__=True
