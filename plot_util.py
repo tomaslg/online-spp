@@ -103,11 +103,16 @@ def plot_regret_t(prior_Spatial_name,regret_NormalIG,regret_Spatial_,pp,plt_):
              label='sum(regret_NormalIG)/T='+
              f'{(regret_NormalIG[-1])}', 
              color='k')
-    plt_.plot((list(range(1,len(regret_Spatial_)+1))), 
-             regret_Spatial_, 
-             label='sum(regret_Spatial_'+
-             f'{prior_Spatial_name})/T={regret_Spatial_[-1]}', 
+    plt_.plot((list(range(1,len(regret_Spatial_[0])+1))), 
+             regret_Spatial_[0], 
+             label='sum(regret_Spatial_PB'+
+             f'{prior_Spatial_name[0]})/T={regret_Spatial_[0][-1]}', 
              color='b')
+    plt_.plot((list(range(1,len(regret_Spatial_[1])+1))), 
+             regret_Spatial_[1], 
+             label='sum(regret_Spatial_PA'+
+             f'{prior_Spatial_name[1][0]})/T={regret_Spatial_[1][-1]}', 
+             color='r')
     plt_.legend()
     font = {'family': 'serif',
             'color':  'darkred',

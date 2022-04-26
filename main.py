@@ -54,17 +54,16 @@ def general_multiplication(__theta_,dist__):
         return __theta_*dist__
 
 
-output_dir=os.path.join(os.path.dirname(os.getcwd()),"output7")
+output_dir=os.path.join(os.path.dirname(os.getcwd()),"output8")
 if not os.path.exists(output_dir):
     os.makedirs(output_dir)
 
 norm_range_ = range(1,3)
 T_iter_set = range(50,51)
 N = 20
-nruns = 100
+nruns = 500
 output_data_file = True
-___theta____ = [2/3,1,4/3,
-                5/3,2,7/3]
+___theta____ = [2/3,1,4/3,5/3,2,7/3]
 all_instances_ = [#reversed,one-border,start-get-out-of-the-slow-zone-and-come-back,
                   #avoid-an-obstacle,snake##,chessboard-non-smooth-no-theta
     # [True,True,False,False,False],#37(1)
@@ -72,10 +71,10 @@ all_instances_ = [#reversed,one-border,start-get-out-of-the-slow-zone-and-come-b
     # [True,False,False,True,False],#37(2)
     # [True,False,True,False,False],#37(2) 
     # [True,False,False,False,False],#37(1)
-    # [False,True,False,False,False],#11(1)
+    [False,True,False,False,False],#11(1)
     # [False,False,False,False,True],#11(2)
     # [False,False,False,True,False],#11(3)
-    [False,False,True,False,False],#11(4)
+    # [False,False,True,False,False],#11(4)
     # [False,False,False,False,False]#11(1)
     ]
 
@@ -85,8 +84,6 @@ all_instances_ = [#reversed,one-border,start-get-out-of-the-slow-zone-and-come-b
 # chessboard_instance = False
 for (_reversed__,one_border,borders_faster,obstacle_slower,snake_opt_path
      ) in all_instances_:
-        
-    
     if _reversed__:
         if one_border:
             #one border
@@ -559,25 +556,41 @@ for (_reversed__,one_border,borders_faster,obstacle_slower,snake_opt_path
                                                          ) * _beta__
                         
                         
-                        prior_Spatial = {}
-                        prior_Spatial["mu"] = np.ones(len(A)
+                        PB_prior_Spatial = {}
+                        PB_prior_Spatial["mu"] = np.ones(len(A)
                                                       ) * np.log(v_prior)
-                        prior_Spatial["kappa"] = np.ones(len(A)) 
-                        prior_Spatial["alpha"] = np.ones(len(A)
+                        PB_prior_Spatial["kappa"] = np.ones(len(A)) 
+                        PB_prior_Spatial["alpha"] = np.ones(len(A)
                                                          ) *_alpha__
-                        prior_Spatial["beta"] = np.ones(len(A)
+                        PB_prior_Spatial["beta"] = np.ones(len(A)
                                                         )  * _beta__
-                        prior_Spatial["theta"] = general_multiplication(
+                        PB_prior_Spatial["theta"] = general_multiplication(
                             __theta_,dist__)
-                        prior_Spatial["rho"] = {}
-                        prior_Spatial["phi"] = np.zeros(
+                        PB_prior_Spatial["rho"] = {}
+                        PB_prior_Spatial["phi"] = np.zeros(
                             (len(A), len(A)))#
-                        # prior_Spatial["phi"]=dok_matrix((len(A), len(A)), dtype=np.float64)
-                        prior_Spatial["name"] = kernel_name+"_"+str(
-                            prior_Spatial["theta"])
-                        prior_Spatial["reversed"] = _reversed__
-                        # prior_Spatial["influential_arcs"]={}
-                        # kernel = exponential
+                        # PB_prior_Spatial["phi"]=dok_matrix((len(A), len(A)), dtype=np.float64)
+                        PB_prior_Spatial["name"] = "PB_"+kernel_name+"_"+str(
+                            PB_prior_Spatial["theta"])
+                        PB_prior_Spatial["reversed"] = _reversed__
+                        
+                        PA_prior_Spatial = {}
+                        PA_prior_Spatial["mu"] = np.ones(len(A)
+                                                      ) * np.log(v_prior)
+                        PA_prior_Spatial["kappa"] = np.ones(len(A)) 
+                        PA_prior_Spatial["alpha"] = np.ones(len(A)
+                                                         ) *_alpha__
+                        PA_prior_Spatial["beta"] = np.ones(len(A)
+                                                        )  * _beta__
+                        PA_prior_Spatial["theta"] = general_multiplication(
+                            __theta_,dist__)
+                        PA_prior_Spatial["rho"] = {}
+                        PA_prior_Spatial["phi"] = np.zeros(
+                            (len(A), len(A)))#
+                        # PA_prior_Spatial["phi"]=dok_matrix((len(A), len(A)), dtype=np.float64)
+                        PA_prior_Spatial["name"] = "PA_"+kernel_name+"_"+str(
+                            PA_prior_Spatial["theta"])
+                        PA_prior_Spatial["reversed"] = _reversed__
                         
                         
                         if not any([one_border,borders_faster,
@@ -597,7 +610,10 @@ for (_reversed__,one_border,borders_faster,obstacle_slower,snake_opt_path
                                         rho_ij = np.linalg.norm(
                                             centers_[i]*dist__
                                             -centers_[j]*dist__,norm_)
-                                        prior_Spatial["phi"][i,j] = (
+                                        PB_prior_Spatial["phi"][i,j] = (
+                                            kernel(__theta_,rho_ij)
+                                                    )
+                                        PA_prior_Spatial["phi"][i,j] = (
                                             kernel(__theta_,rho_ij)
                                                     )
                         else:
@@ -610,7 +626,7 @@ for (_reversed__,one_border,borders_faster,obstacle_slower,snake_opt_path
                                     rho_ij=np.linalg.norm(centers_[i]*
                                                           dist__-centers_[j]*
                                                           dist__,norm_)
-                                    if type(prior_Spatial["theta"]) is str:
+                                    if type(PB_prior_Spatial["theta"]) is str:
                                         if not (
                                                 np.abs(A[i][1][0]-A[i][0][0])
                                                 ==np.abs(A[j][1][0]-A[j][0][0]) 
@@ -619,57 +635,81 @@ for (_reversed__,one_border,borders_faster,obstacle_slower,snake_opt_path
                                                               A[j][1][1]-
                                                               A[j][0][1])
                                                 ):
-                                            prior_Spatial["phi"][i,j]= kernel(
+                                            PB_prior_Spatial["phi"][i,j]= kernel(
                                                 float(
-                                                prior_Spatial["theta"
+                                                PB_prior_Spatial["theta"
                                                         ].split("_")[1]),
                                                 rho_ij)
                                         else:
-                                            prior_Spatial["phi"][i,j] = kernel(
+                                            PB_prior_Spatial["phi"][i,j] = kernel(
                                                 float(
-                                                prior_Spatial["theta"
+                                                PB_prior_Spatial["theta"
                                                         ].split("_")[0]),
                                                 rho_ij)
                                     else:
-                                    # if kernel(prior_Spatial["theta"] , rho_ij ) >= np.exp(-21):
-                                        prior_Spatial["phi"][i,j]= kernel(
-                                            prior_Spatial["theta"],rho_ij)
-                                        # prior["influential_arcs"][i].append(j)
-                        # distrib_=
-                        # min_eigen_v=np.linalg.eigvals( (prior_Spatial["phi"]*np.eye(len(A))) ).min()
-                        # if -10**(-6)<min_eigen_v<0:
-                        #     for i in range(len(A)):
-                        #         prior_Spatial["phi"][i,i]-=1.01*min_eigen_v
-                            
+                                        PB_prior_Spatial["phi"][i,j]= kernel(
+                                            PB_prior_Spatial["theta"],rho_ij)
+                                    if type(PA_prior_Spatial["theta"]) is str:
+                                        if not (
+                                                np.abs(A[i][1][0]-A[i][0][0])
+                                                ==np.abs(A[j][1][0]-A[j][0][0]) 
+                                                or np.abs(A[i][1][1]-
+                                                          A[i][0][1])==np.abs(
+                                                              A[j][1][1]-
+                                                              A[j][0][1])
+                                                ):
+                                            PA_prior_Spatial["phi"][i,j]= kernel(
+                                                float(
+                                                PA_prior_Spatial["theta"
+                                                        ].split("_")[1]),
+                                                rho_ij)
+                                        else:
+                                            PA_prior_Spatial["phi"][i,j] = kernel(
+                                                float(
+                                                PA_prior_Spatial["theta"
+                                                        ].split("_")[0]),
+                                                rho_ij)
+                                    else:
+                                        PA_prior_Spatial["phi"][i,j]= kernel(
+                                            PA_prior_Spatial["theta"],rho_ij)
+                                        
                         
                         non_corrated_dist = NormalIG(prior_NormalIG)
                         # spatial_distribution = Spatial_Metric(prior_Spatial)
-                        spatial_distribution = Spatial_Metric_2(prior_Spatial)
-                        # spatial_distribution = Spatial_Metric3(prior_Spatial)
+                        PA_spatial_distribution = Spatial_Metric_2(PA_prior_Spatial)
+                        PB_spatial_distribution = Spatial_Metric3(PB_prior_Spatial)
                         plot_histogram_sigma(non_corrated_dist,
                             pp,plt,"Histogram_sigma2_before_training")
-                        plot_histogram_sigma(spatial_distribution,
+                        plot_histogram_sigma(PA_spatial_distribution,
+                            pp,plt,"Histogram_sigma2_before_training")
+                        plot_histogram_sigma(PB_spatial_distribution,
                             pp,plt,"Histogram_sigma2_before_training")
                         plot_distribution(non_corrated_dist,
                             pp,plt,"mu_density_before_training")
-                        plot_distribution(spatial_distribution,
+                        plot_distribution(PA_spatial_distribution,
+                            pp,plt,"mu_density_before_training")
+                        plot_distribution(PB_spatial_distribution,
                             pp,plt,"mu_density_before_training")
                         (regret_,Paths_,Observed_values_,
                          Paths_expert,mu_updates,Time_
                          )=TS_Stationary(T_iter,G_2,instance__,sigma,
                                          d_all_arcs,
                                          [non_corrated_dist,
-                                          spatial_distribution],
+                                          PB_spatial_distribution,
+                                          PA_spatial_distribution],
                                          borders_faster,obstacle_slower)#
                         
                         
                         
                         regret_NormalIG = regret_[0]
-                        regret_Spatial_ = regret_[1]
+                        PB_regret_Spatial_ = regret_[1]
+                        PA_regret_Spatial_ = regret_[2]
                         Paths_NormalIG = Paths_[0]
-                        Paths_Spatial_ = Paths_[1]
+                        PB_Paths_Spatial_ = Paths_[1]
+                        PA_Paths_Spatial_ = Paths_[2]
                         Time_NormalIG = Time_[0]
-                        Time_Spatial_ = Time_[1]
+                        PB_Time_Spatial_ = Time_[1]
+                        PA_Time_Spatial_ = Time_[2]
                         
                         for d_ in  range(len(regret_)):
                             # index_reg = 0
@@ -708,11 +748,15 @@ for (_reversed__,one_border,borders_faster,obstacle_slower,snake_opt_path
                         
                         plot_histogram_sigma(non_corrated_dist,
                                 pp,plt,"Histogram_sigma2_after_training")
-                        plot_histogram_sigma(spatial_distribution,
+                        plot_histogram_sigma(PB_spatial_distribution,
+                                pp,plt,"Histogram_sigma2_after_training")
+                        plot_histogram_sigma(PA_spatial_distribution,
                                 pp,plt,"Histogram_sigma2_after_training")
                         plot_distribution(non_corrated_dist,
                                 pp,plt,"mu_density_after_training")
-                        plot_distribution(spatial_distribution,
+                        plot_distribution(PB_spatial_distribution,
+                                pp,plt,"mu_density_after_training")
+                        plot_distribution(PA_spatial_distribution,
                                 pp,plt,"mu_density_after_training")
                         
                         
@@ -742,17 +786,20 @@ for (_reversed__,one_border,borders_faster,obstacle_slower,snake_opt_path
                         
                         
                         if Plot_Instance_1:
-                            for j,obs__ in enumerate(Paths_Spatial_):
-                                edge_color_instance_2=[ 
-                                    ((-mu_updates[1][j][i]#
-                                        # 'r'  if int( centers_[i][0]/Delta )%2==
-                                        #                     int( centers_[i][1]/Delta )%2 else 'b' 
-                                        ) if A[i] not in obs__[1] else -N/2#'k'
-                                     ) for i in range(len(A))]
-                                get_plot(G=G_2,
-                                         edge_color_=edge_color_instance_2,
-                                         pp=pp,plt_=plt,Title=f"{obs__[0]}",
-                                         _paths_=obs__[1])
+                            for Paths_Spatial_ in [PB_Paths_Spatial_,
+                                                   PA_Paths_Spatial_]:
+                                for j,obs__ in enumerate(Paths_Spatial_):
+                                    edge_color_instance_2=[ 
+                                        ((-mu_updates[1][j][i]#
+                                            # 'r'  if int( centers_[i][0]/Delta )%2==
+                                            #                     int( centers_[i][1]/Delta )%2 else 'b' 
+                                            ) if A[i] not in obs__[1] 
+                                         else -N/2#'k'
+                                         ) for i in range(len(A))]
+                                    get_plot(G=G_2,
+                                             edge_color_=edge_color_instance_2,
+                                             pp=pp,plt_=plt,Title=f"{obs__[0]}",
+                                             _paths_=obs__[1])
                             edge_color_instance_2=[ ((-instance__[i]
                                                       #'r'  if int( centers_[i][0]/Delta )%2==
                                                             # int( centers_[i][1]/Delta )%2 else 'b' 
@@ -766,14 +813,16 @@ for (_reversed__,one_border,borders_faster,obstacle_slower,snake_opt_path
                                      _paths_=Paths_expert[-1][1]
                                      )
                         if Plot_Instance_2:
-                            for j,obs__ in enumerate(Paths_Spatial_):
-                                edge_color_instance_2=[ (-mu_updates[1][j][i]#_edge_color_instance_2[i] 
-                                    # if A[i] not in obs__[1] else -N/2#'k'
-                                    ) for i in range(len(A))]
-                                get_plot(G=G_2,
-                                         edge_color_=edge_color_instance_2,
-                                         pp=pp,plt_=plt,Title=f"{obs__[0]}",
-                                         _paths_=obs__[1])
+                            for Paths_Spatial_ in [PB_Paths_Spatial_,
+                                                   PA_Paths_Spatial_]:
+                                for j,obs__ in enumerate(Paths_Spatial_):
+                                    edge_color_instance_2=[ (-mu_updates[1][j][i]#_edge_color_instance_2[i] 
+                                        # if A[i] not in obs__[1] else -N/2#'k'
+                                        ) for i in range(len(A))]
+                                    get_plot(G=G_2,
+                                             edge_color_=edge_color_instance_2,
+                                             pp=pp,plt_=plt,Title=f"{obs__[0]}",
+                                             _paths_=obs__[1])
                             edge_color_instance_2=[ (-instance__[i]#_edge_color_instance_2[i] 
                                     if A[i] not in Paths_expert[-1][1] 
                                     else -instance__[i]#'k'
@@ -782,9 +831,11 @@ for (_reversed__,one_border,borders_faster,obstacle_slower,snake_opt_path
                                      pp=pp,plt_=plt,
                                      Title=f"{Paths_expert[-1][0]}",
                                      _paths_=Paths_expert[-1][1])
-                        plot_regret_t(prior_Spatial["name"],
+                        plot_regret_t([PB_prior_Spatial["name"],
+                                       PA_prior_Spatial["name"]],
                                       regret_NormalIG,
-                                      regret_Spatial_,pp,plt)
+                                      [PB_regret_Spatial_,
+                                       PA_regret_Spatial_],pp,plt)
                         if pp:
                             pp.close()
                 if output_data_file:
