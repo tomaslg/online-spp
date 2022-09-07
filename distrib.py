@@ -62,29 +62,50 @@ class NormalIG:
                      (sumy[key]**2 / N[key]) if N[key]>0 else 0
                          ) ) + 
                 (self.kappa0[key] * self.N[key] * (self.mu0[key]-
-                                    ( (sumy[key]/N[key]) if N[key]>0 else 0 ))**2 )/(
-                                    2 * (self.kappa0[key] + N[key]) )
+                            ( (sumy[key]/N[key]) if N[key]>0 else 0 ))**2 )/(
+                            2 * (self.kappa0[key] + N[key]) )
                 )
             self.sumy[key]=sumy[key]
             self.sumy2[key]=sumy2[key]
             self.N[key]=N[key]
     def update_posterior_one_observation_stationary(self,OBS):
         self.update_posterior(
-            {key : self.sumy[key]+OBS[key]  for key in OBS}, 
-            {key : self.sumy2[key] + OBS[key]**2  for key in OBS}, 
-            {key : self.N[key]+1 for key in OBS})
+            {key : self.sumy[key]+val  for key,val in OBS.items()}, 
+            {key : self.sumy2[key] + val**2  for key,val in OBS.items()}, 
+            {key : self.N[key]+1 for key,val in OBS.items()})
     def sample_lambda_posterior(self):
-        return (stats.invgamma(self.alpha, loc=0, scale=self.beta)).rvs()
+        return 1 / np.random.gamma(shape=self.alpha, scale=self.beta) #(stats.invgamma(self.alpha, loc=0, scale=self.beta)).rvs()
     def sample_poserior(self):
         lambda_ = self.sample_lambda_posterior()#(stats.invgamma(self.alpha, loc=0, scale=self.beta)).rvs()
+        # print(f"min,max,sum(lambda_)={min(lambda_)},{max(lambda_)},{sum(lambda_)}")
         return (
             stats.norm(self.mu,
-                       1/(self.kappa*lambda_)**.5 
-                       )).rvs() + lambda_/2 
+                       (lambda_/self.kappa)**.5
+                       )).rvs() + .5*lambda_ 
 
+class naive_approach(NormalIG):
+    def __init__(self,prior):
+        super().__init__(prior)
+        self.name="Naive"
+        self.epsilon=.1
+    def update_posterior(self,sumy,N):
+        for key in sumy:
+            self.mu[key]= sumy[key] / N[key]
+            self.sumy[key]=sumy[key]
+            self.N[key]=N[key]
+    def update_posterior_one_observation_stationary(self,OBS):
+        self.update_posterior(
+            {key : self.sumy[key]+val  for key,val in OBS.items()}, 
+            {key : self.N[key]+1 for key,val in OBS.items()})
+    def sample_poserior(self):
+        mu_ = self.mu.copy()
+        # if np.random.random()<=self.epsilon:
+        #     mu_[np.argmax(self.N)] = - abs(min(mu_)) * 6
+        return mu_
 # @timer_func
 # def get_submatrix(matrix,indexes1,indexes2):
 #     return matrix[indexes1,:][:,indexes2]
+assert_required = True
 
 class Spatial_Metric(NormalIG):
     def __init__(self,prior):
@@ -95,7 +116,7 @@ class Spatial_Metric(NormalIG):
         self.sparse_correlation_matrix_flag = issparse(self.phi)
         # for (key,val) in prior["rho"].items():
         #     self.phi[key[0],key[1]]= np.exp(-prior["theta"] * val**2 )
-        assert(is_pos_def( #np.matmul
+        if assert_required: assert(is_pos_def( #np.matmul
                           (prior["phi"]*np.eye(len(self.mu))) ))
         self.observed_paths=[]
         self.phi_Pinv=[]
@@ -133,7 +154,7 @@ class Spatial_Metric(NormalIG):
     # @timer_func
     def sample_poserior(self):
         lambda_ = self.sample_lambda_posterior()#(stats.invgamma(self.alpha, loc=0, scale=self.beta)).rvs()
-        mu_ = (stats.norm(self.mu,1/(self.kappa*lambda_)**.5 )).rvs()
+        mu_ = (stats.norm(self.mu,(lambda_/self.kappa)**.5 )).rvs()
         lambda_ = np.diag(lambda_)
         # d__=stats.invgamma(self.alpha, loc=0, scale=self.beta)
         # lambda_ = np.diag(d__.rvs())
@@ -265,20 +286,23 @@ class Spatial_Metric(NormalIG):
                 #     print(f"Max error reduction it {_k}",
                 #           max([lambda_[i,i] for i in
                 #         self.influence_zones[len(self.observed_paths)-_k - 1]]))
-        return mu_ + (lambda_.diagonal())/2
+        return mu_ + (lambda_.diagonal()/2)
         
 
-class Spatial_Metric_2(NormalIG):
+class Spatial_Metric_2(NormalIG):#PA
     def __init__(self,prior):
         super().__init__(prior)
         self.name = "Spatial_"+prior["name"]
         # self.theta=prior["theta"]
-        self.phi = prior["phi"]#dok_matrix((len(self.mu), len(self.mu)), dtype=np.float32)
-        self.sparse_correlation_matrix_flag = issparse(self.phi)
-        # for (key,val) in prior["rho"].items():
-        #     self.phi[key[0],key[1]]= np.exp(-prior["theta"] * val**2 )
-        assert(is_pos_def( #np.matmul
+        self.generate_cov_matrix = prior["generate_cov_matrix"]
+        if not self.generate_cov_matrix and assert_required: 
+            assert(is_pos_def( #np.matmul
                           (prior["phi"]*np.eye(len(self.mu))) ))
+        if not self.generate_cov_matrix:
+            self.phi = prior["phi"]#dok_matrix((len(self.mu), len(self.mu)), dtype=np.float32)
+            self.sparse_correlation_matrix_flag = issparse(self.phi)
+        else:
+            self.kernel = prior["kernel"]
         self.observed_paths = []
         self.phi_Pinv = []
         self.influence_zones = []
@@ -291,7 +315,12 @@ class Spatial_Metric_2(NormalIG):
         self.observed_paths.append(OBS)
     # @timer_func
     def computesqrtLxphixsqrtL_P(self,sqrt_Lambda_,path_arc_indexes,inf_zone):
-        if self.sparse_correlation_matrix_flag:
+        if self.generate_cov_matrix:
+            return np.matmul(sqrt_Lambda_[inf_zone,:][:,inf_zone] ,
+                          np.matmul( self.kernel(inf_zone,path_arc_indexes) , 
+                          sqrt_Lambda_[path_arc_indexes,:][:,path_arc_indexes] 
+                          ) )
+        elif self.sparse_correlation_matrix_flag:
             return np.matmul(sqrt_Lambda_[inf_zone,:][:,inf_zone] ,
                           ( self.phi[inf_zone,:][:,path_arc_indexes] * 
                           sqrt_Lambda_[path_arc_indexes,:][:,path_arc_indexes] 
@@ -304,7 +333,7 @@ class Spatial_Metric_2(NormalIG):
     # @timer_func
     def sample_poserior(self):
         lambda_ = self.sample_lambda_posterior()#(stats.invgamma(self.alpha, loc=0, scale=self.beta)).rvs()
-        mu_ = (stats.norm(self.mu,1/(self.kappa*lambda_)**.5 )).rvs()
+        mu_ = (stats.norm(self.mu,(lambda_/self.kappa)**.5 )).rvs()
         lambda_ = np.diag(lambda_)
         # number_updates = np.zeros(len(self.mu))
         hat_mu = np.zeros(len(self.mu))
@@ -317,7 +346,11 @@ class Spatial_Metric_2(NormalIG):
                    not i in path_arc_indexes]
         sigma_AinfxP = self.computesqrtLxphixsqrtL_P(
                 sqrt_Lambda_,path_arc_indexes,AmP)
-        if self.sparse_correlation_matrix_flag:
+        if self.generate_cov_matrix:
+            phi_Pinv = np.linalg.inv(np.matmul(
+                        self.kernel(path_arc_indexes,path_arc_indexes),
+                        np.eye(len(path_arc_indexes))))
+        elif self.sparse_correlation_matrix_flag:
             phi_Pinv = np.linalg.inv(
                         self.phi[:,path_arc_indexes][path_arc_indexes,:]*
                         np.eye(len(path_arc_indexes)))
@@ -336,11 +369,9 @@ class Spatial_Metric_2(NormalIG):
                              (np.array([hat_mu[j] for j in path_arc_indexes]
                                 ) - mu_[path_arc_indexes] ))
                             )#/len(self.observed_paths)
-            cte_ = np.matmul(np.matmul(
-                    sigma_AinfxP[i_,:] , sigma_P_inv),
-                np.transpose(sigma_AinfxP[i_,:]) )
-            if cte_>lambda_[i,i]:
-                print("")
+            # cte_ = np.matmul(np.matmul(
+            #         sigma_AinfxP[i_,:] , sigma_P_inv),
+            #     np.transpose(sigma_AinfxP[i_,:]) )
             lambda_[i,i] -= np.matmul(np.matmul(
                     sigma_AinfxP[i_,:] , sigma_P_inv),
                 np.transpose(sigma_AinfxP[i_,:]) )
@@ -351,14 +382,18 @@ class Spatial_Metric_2(NormalIG):
                 path_arc_indexes_ = [k for k in path_arc_indexes if k!=i]
                 sigma_AinfxP = self.computesqrtLxphixsqrtL_P(
                         sqrt_Lambda_,path_arc_indexes_,[i])
-                if self.sparse_correlation_matrix_flag:
+                if self.generate_cov_matrix:
+                    phi_Pinv = np.linalg.inv(np.matmul(
+                        self.kernel(path_arc_indexes_,path_arc_indexes_),
+                        np.eye(len(path_arc_indexes_))))
+                elif self.sparse_correlation_matrix_flag:
                     phi_Pinv = np.linalg.inv(
-                                self.phi[:,path_arc_indexes_][path_arc_indexes_,:]*
-                                np.eye(len(path_arc_indexes_)))
+                        self.phi[:,path_arc_indexes_][path_arc_indexes_,:]*
+                        np.eye(len(path_arc_indexes_)))
                 else:
                     phi_Pinv = np.linalg.inv(np.matmul(
-                                self.phi[:,path_arc_indexes_][path_arc_indexes_,:],
-                                np.eye(len(path_arc_indexes_))))
+                        self.phi[:,path_arc_indexes_][path_arc_indexes_,:],
+                        np.eye(len(path_arc_indexes_))))
                 inv_sqrt_Lambda_P = np.linalg.inv(
                     sqrt_Lambda_[:,path_arc_indexes_][path_arc_indexes_,:])
                 sigma_P_inv = np.matmul(np.matmul(
@@ -379,7 +414,7 @@ class Spatial_Metric_2(NormalIG):
             for i in mu_tilde.keys():
                 mu_[i] = mu_tilde[i]
                 lambda_[i,i] = lambda_tilde[i]
-        return mu_ + (lambda_.diagonal())/2
+        return mu_ + (lambda_.diagonal()/2)
         
 
         
@@ -389,12 +424,17 @@ class Spatial_Metric3(NormalIG):
         super().__init__(prior)
         self.name="Spatial_"+prior["name"]
         # self.theta=prior["theta"]
-        self.phi=prior["phi"]#dok_matrix((len(self.mu), len(self.mu)), dtype=np.float32)
-        self.sparse_correlation_matrix_flag = issparse(self.phi)
         # for (key,val) in prior["rho"].items():
         #     self.phi[key[0],key[1]]= np.exp(-prior["theta"] * val**2 )
-        assert(is_pos_def( #np.matmul
+        self.generate_cov_matrix = prior["generate_cov_matrix"]
+        if not self.generate_cov_matrix and assert_required: 
+            assert(is_pos_def( #np.matmul
                           (prior["phi"]*np.eye(len(self.mu))) ))
+        if not self.generate_cov_matrix:
+            self.phi = prior["phi"]#dok_matrix((len(self.mu), len(self.mu)), dtype=np.float32)
+            self.sparse_correlation_matrix_flag = issparse(self.phi)
+        else:
+            self.kernel = prior["kernel"]
         self.observed_paths=[]
         self.phi_Pinv=[]
         self.influence_zones=[]
@@ -412,7 +452,11 @@ class Spatial_Metric3(NormalIG):
         # sqrt_Lambda_inf_zone_path_arc_indexes = get_submatrix(sqrt_Lambda_,inf_zone,path_arc_indexes)
         # return np.matmul(sqrt_Lambda_inf_zone ,( phi_inf_zone * 
         #                   sqrt_Lambda_inf_zone_path_arc_indexes ) )
-        if self.sparse_correlation_matrix_flag:
+        if self.generate_cov_matrix:
+            return np.matmul(sqrt_Lambda_[inf_zone,:][:,inf_zone] ,
+                          np.matmul( self.kernel(inf_zone,path_arc_indexes) , 
+                          sqrt_Lambda_[path_arc_indexes,:][:,path_arc_indexes] ) )
+        elif self.sparse_correlation_matrix_flag:
             return np.matmul(sqrt_Lambda_[inf_zone,:][:,inf_zone] ,
                           ( self.phi[inf_zone,:][:,path_arc_indexes] * 
                           sqrt_Lambda_[path_arc_indexes,:][:,path_arc_indexes] ) ) 
@@ -425,12 +469,19 @@ class Spatial_Metric3(NormalIG):
         inf_zone=[]
         for i_p in path_arc_indexes:
             for i_np in AmP:
-                if self.phi[i_p,i_np]>  .1**2 and not i_np in inf_zone:
+                if (self.generate_cov_matrix and 
+                    self.kernel([i_p],[i_np])>  .1**2 and 
+                    not i_np in inf_zone
+                    ) or (not self.generate_cov_matrix and 
+                    self.phi[i_p,i_np]>  .1**2 and 
+                    not i_np in inf_zone):
                     inf_zone.append(i_np)
         return inf_zone
     
     def get_dense_submatrix(self,path_arc_indexes):
-        if self.sparse_correlation_matrix_flag:
+        if self.generate_cov_matrix:
+            return self.kernel(path_arc_indexes,path_arc_indexes)
+        elif self.sparse_correlation_matrix_flag:
             return self.phi[:,path_arc_indexes][path_arc_indexes,:
                                     ]*np.eye(len(path_arc_indexes))
         else:
@@ -462,7 +513,7 @@ class Spatial_Metric3(NormalIG):
         return hat_sigma_2/len(path_arc_indexes)
     def sample_poserior(self):
         lambda_ = self.sample_lambda_posterior()#(stats.invgamma(self.alpha, loc=0, scale=self.beta)).rvs()
-        mu_ = (stats.norm(self.mu,1/(self.kappa*lambda_)**.5 )).rvs()
+        mu_ = (stats.norm(self.mu,(lambda_/self.kappa)**.5 )).rvs()
         lambda_ = np.diag(lambda_)
         # d__=stats.invgamma(self.alpha, loc=0, scale=self.beta)
         # lambda_ = np.diag(d__.rvs())
@@ -479,8 +530,8 @@ class Spatial_Metric3(NormalIG):
                 path_arc_indexes = list(obs_k_.keys())
                 AmP = [i for i in range(len(self.mu)) if 
                        not i in path_arc_indexes]
-                hat_sigma_2 = self.get_hat_sigma_2(path_arc_indexes,
-                                                   mu_,sqrt_Lambda_,AmP,obs_k_)
+                hat_sigma_2 = self.get_hat_sigma_2(
+                    path_arc_indexes,mu_,sqrt_Lambda_,AmP,obs_k_)
                 # self.reversed__=True
                 if _k==0 and len(self.observed_paths)>len(self.influence_zones
                                                           ):
