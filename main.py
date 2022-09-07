@@ -20,9 +20,9 @@ from time import time
 from _meta_util import timer_func
 from distrib import (NormalIG,Spatial_Metric,Spatial_Metric_2,Spatial_Metric3,
                      np)
-from TS import get_nodes_and_edges,TS_Stationary,nx
+from TS import get_nodes_and_edges,TS_Stationary,nx,truth_sampler
     
-from plot_util import (plot_distribution,plot_histogram_sigma,get_plot,
+from plot_util import (show_plot,plot_distribution,plot_histogram_sigma,get_plot,
                        get_graph_instance_1,get_graph_instance_2,plot_regret_t)
 
 
@@ -37,8 +37,8 @@ def gaussian(theta,rho):
 
 def exponential(theta,rho):
     return np.exp(-rho/theta)
-Kernels={"hyperbolic" : hyperbolic , 
-          "gaussian" : gaussian , 
+Kernels={#"hyperbolic" : hyperbolic , 
+        "gaussian" : gaussian , 
         "exponential" : exponential
          }
 def general_multiplication(__theta_,dist__):
@@ -53,17 +53,36 @@ def general_multiplication(__theta_,dist__):
     else:
         return __theta_*dist__
 
+def sample_truth_from_mean(truth,sigma,A):
+    return {a : np.exp(truth[j_] + sigma[j_]**2 / 2)  
+                                        for j_,a in enumerate(A)}
 
-output_dir=os.path.join(os.path.dirname(os.getcwd()),"output8")
+def artificial_instance_sampler(*args):
+    truth , sigma , borders_faster , obstacle_slower = args
+    def __function(V):
+        source = int( (len(V)**.5 -1 )*len(V)**.5) if obstacle_slower else (
+                int( len(V)/3 ) if borders_faster else int(len(V)-1))#target=np.random.randint(len(V))
+        target = int( len(V)*2/3 ) if borders_faster else 0
+        source,target=V[source],V[target]
+        return source,target,np.log(np.random.lognormal(truth , sigma))
+    return __function
+
+
+output_dir=os.path.join(os.path.dirname(os.getcwd()),"output9")
 if not os.path.exists(output_dir):
     os.makedirs(output_dir)
 
-norm_range_ = range(1,3)
+pp_bol = True
+norm_range_ = range(1,2)
 T_iter_set = range(50,51)
 N = 20
-nruns = 500
-output_data_file = True
-___theta____ = [2/3,1,4/3,5/3,2,7/3]
+nruns = 1
+output_data_file = False
+___theta____ = [#2/3, 
+                4/3#, 2,
+                # 8/3, 10/3, 4
+                #8/3,10/3,4
+    ]
 all_instances_ = [#reversed,one-border,start-get-out-of-the-slow-zone-and-come-back,
                   #avoid-an-obstacle,snake##,chessboard-non-smooth-no-theta
     # [True,True,False,False,False],#37(1)
@@ -71,10 +90,10 @@ all_instances_ = [#reversed,one-border,start-get-out-of-the-slow-zone-and-come-b
     # [True,False,False,True,False],#37(2)
     # [True,False,True,False,False],#37(2) 
     # [True,False,False,False,False],#37(1)
-    [False,True,False,False,False],#11(1)
-    # [False,False,False,False,True],#11(2)
-    # [False,False,False,True,False],#11(3)
-    # [False,False,True,False,False],#11(4)
+    [False,True,False,False,False],#11(1) one border
+    [False,False,False,False,True],#11(2) snake
+    [False,False,False,True,False],#11(3) obstacle
+    [False,False,True,False,False],#11(4) start slow zone leave and enter
     # [False,False,False,False,False]#11(1)
     ]
 
@@ -84,197 +103,6 @@ all_instances_ = [#reversed,one-border,start-get-out-of-the-slow-zone-and-come-b
 # chessboard_instance = False
 for (_reversed__,one_border,borders_faster,obstacle_slower,snake_opt_path
      ) in all_instances_:
-    if _reversed__:
-        if one_border:
-            #one border
-            re_do_list = [
-                # (1,"exponential",'0.6666666666666666_2'),
-                #   (1,"exponential",'1_1.6666666666666667'),
-                #   (1,"exponential",'1_2'),
-                #   (1,"exponential",'2.3333333333333335_2.3333333333333335'),
-                #   (2,"gaussian",'0.6666666666666666_0.6666666666666666'),
-                #   (2,"gaussian",'2.3333333333333335_2.3333333333333335'),
-                #   # (2,"gaussian",'1.6666666666666667_1.3333333333333333'),
-                #   # (2,"gaussian",'2.3333333333333335_2'),
-                #   (2,"exponential",'1.6666666666666667_1.3333333333333333'),
-                #   (2,"exponential",'2.3333333333333335_1.3333333333333333')
-                #   # (2,"exponential",'1_0.6666666666666666')
-                  ]
-        # elif borders_faster or chessboard_instance_bool:
-            # re_do_list = []
-        elif snake_opt_path:
-            re_do_list = [
-                # (1,"exponential",'0.6666666666666666_2.3333333333333335'),
-                #           (1,"exponential",'1_2.3333333333333335'),
-                #           (1,"exponential",'2.3333333333333335_1.3333333333333333'),
-                #           (2,"gaussian",'1.3333333333333333_0.6666666666666666'),
-                #           (2,"gaussian",'1_0.6666666666666666'),
-                #           (2,"gaussian",'2.3333333333333335_1.3333333333333333'),
-                #           (2,"exponential",'1.3333333333333333_0.6666666666666666'),
-                #           (2,"exponential",'1_2.3333333333333335'),
-                ]
-        elif obstacle_slower:
-            #w/ obstacle reversed
-            re_do_list = [
-                # #(1,"exponential",'0.6666666666666666_0.6666666666666666'),
-                #           # (1,"exponential",'0.6666666666666666_2'),
-                #           (1,"exponential",'0.6666666666666666_2.3333333333333335'),
-                #           # (1,"exponential",'1.3333333333333333_0.6666666666666666'),
-                #           (1,"exponential",'1_1.6666666666666667'),
-                #           # (1,"exponential",'1.6666666666666667_0.6666666666666666'),
-                #           # (1,"exponential",'1_2'),
-                #           # (1,"exponential",'2.3333333333333335_0.6666666666666666'),
-                #           # (1,"exponential",'2.3333333333333335_1'),
-                #           # (1,"exponential",'2.3333333333333335_2.3333333333333335'),
-                #           # (1,"exponential",'2.3333333333333335_1.3333333333333333'),
-                #           # (1,"exponential",'2.3333333333333335_1.6666666666666667'),
-                #           # (1,"exponential",'2_0.6666666666666666'),
-                #           # (1,"exponential",'2_2'),
-                #           (2,"gaussian",'0.6666666666666666_2.3333333333333335'),
-                #           # (2,"gaussian",'0.6666666666666666_1.3333333333333333'),
-                #           (2,"gaussian",'1.3333333333333333_0.6666666666666666'),
-                #           # (2,"gaussian",'1.3333333333333333_1.6666666666666667'),
-                #           # (2,"gaussian",'1.3333333333333333_2'),
-                #           # (2,"gaussian",'1.6666666666666667_1.6666666666666667'),
-                #           (2,"gaussian",'1_2'),
-                #           (2,"gaussian",'2.3333333333333335_1.6666666666666667'),
-                #           (2,"gaussian",'2.3333333333333335_2.3333333333333335'),
-                #           # (2,"gaussian",'2_1'),
-                #           # (2,"exponential",'1.6666666666666667_1.3333333333333333'),
-                #           # (2,"exponential",'0.6666666666666666_1.3333333333333333'),
-                #           (2,"exponential",'0.6666666666666666_2'),
-                #           # (2,"exponential",'1_0.6666666666666666'),
-                #           (2,"exponential",'1_2'),
-                #           # (2,"exponential",'1_23333333333333335'),
-                #           (2,"exponential",'23333333333333335_23333333333333335')
-                  ]
-        elif borders_faster:
-            re_do_list = [
-                # (1,"exponential",'0.6666666666666666_0.6666666666666666'),
-                #           (1,"exponential",'0.6666666666666666_2'),
-                #           (1,"exponential",'1_0.6666666666666666'),
-                #           (1,"exponential",'1.3333333333333333_0.6666666666666666'),
-                #           # (1,"exponential",'1_1.6666666666666667'),
-                #           (1,"exponential",'1_2'),
-                #           # (1,"exponential",'1.3333333333333333_1.6666666666666667'),
-                #           # (1,"exponential",'1.6666666666666667_0.6666666666666666'),
-                #           # (1,"exponential",'1_2.3333333333333335'),
-                #           # (1,"exponential",'2.3333333333333335_0.6666666666666666'),
-                #           # (1,"exponential",'2.3333333333333335_1'),
-                #           # (1,"exponential",'2.3333333333333335_1.3333333333333333'),
-                #           (1,"exponential",'2.3333333333333335_2.3333333333333335'),
-                #           # (1,"exponential",'2_0.6666666666666666'),
-                #           # (1,"exponential",'2_2'),
-                #           # (2,"gaussian",'0.6666666666666666_0.6666666666666666'),
-                #           # (2,"gaussian",'0.6666666666666666_1.3333333333333333'),
-                #           (2,"gaussian",'1_0.6666666666666666'),
-                #           # (2,"gaussian",'1.3333333333333333_0.6666666666666666'),
-                #           # (2,"gaussian",'1.3333333333333333_1.6666666666666667'),
-                #           # (2,"gaussian",'1.3333333333333333_2'),
-                #            (2,"gaussian",'2.3333333333333335_1.6666666666666667'),
-                #           # (2,"gaussian",'1_2'),
-                #           # (2,"gaussian",'2.3333333333333335_0.6666666666666666'),
-                #           (2,"gaussian",'2.3333333333333335_2.3333333333333335'),
-                #           # (2,"gaussian",'2_1'),
-                #           (2,"exponential",'0.6666666666666666_0.6666666666666666'),
-                #           # (2,"exponential",'1.6666666666666667_1.3333333333333333'),
-                #           (2,"exponential",'2.3333333333333335_1.6666666666666667'),
-                #           # (2,"exponential",'0.6666666666666666_2'),
-                #           (2,"exponential",'1_0.6666666666666666'),
-                #           # (2,"exponential",'1_2.3333333333333335')
-                #           (2,"exponential",'1_2')
-                  ]
-        else:
-            re_do_list = []
-    else:
-        if one_border:
-            #one border sequential
-            re_do_list = [
-                # #(1,"exponential",'1.3333333333333333_0.6666666666666666'),
-                #   # (1,"exponential",'1.3333333333333333_1'),
-                #   # (1,"exponential",'1.3333333333333333_1.3333333333333333'),
-                #   # (1,"exponential",'1.3333333333333333_2'),
-                #   # (1,"exponential",'1.6666666666666667_0.6666666666666666'),
-                #   # (1,"exponential",'1.6666666666666667_1.3333333333333333'),
-                #   # (1,"exponential",'1.6666666666666667_2'),
-                #   # (1,"exponential",'1_0.6666666666666666'),
-                #   # (1,"exponential",'1_1.6666666666666667'),
-                #   (1,"exponential",'1_2'),
-                #   # (1,"exponential",'1_2.3333333333333335'),
-                #   # (1,"exponential",'2.3333333333333335_1.6666666666666667'),
-                #   # (1,"exponential",'2_0.6666666666666666'),
-                #   # (2,"gaussian",'0.6666666666666666_1'),
-                #   (2,"gaussian",'1_0.6666666666666666'),
-                #   # (2,"gaussian",'1.6666666666666667_2'),
-                #   # (2,"gaussian",'2_1.6666666666666667'),
-                #   # (2,"exponential",'0.6666666666666666_2.3333333333333335'),
-                #   # (2,"exponential",'1.3333333333333333_0.6666666666666666'),
-                #   # (2,"exponential",'1.3333333333333333_1'),
-                #   # (2,"exponential",'1.3333333333333333_1.3333333333333333'),
-                #   # (2,"exponential",'1.6666666666666667_0.6666666666666666'),
-                #   (2,"exponential",'0.6666666666666666_2'),
-                #   # (2,"exponential",'1_1.3333333333333333'),
-                #   # (2,"exponential",'1_2')
-                  ]
-        elif snake_opt_path:
-            re_do_list = [
-                # (1,"exponential",'0.6666666666666666_2'),
-                #           (1,"exponential",'1.3333333333333333_0.6666666666666666'),
-                #           (1,"exponential",'1_0.6666666666666666'),
-                #           (1,"exponential",'1_2'),
-                #           (1,"exponential",'1_2.3333333333333335'),
-                #           (1,"exponential",'2.3333333333333335_1.3333333333333333'),
-                #           (2,"gaussian",'0.6666666666666666_0.6666666666666666'),
-                #           (2,"gaussian",'0.6666666666666666_2.3333333333333335'),
-                #           (2,"gaussian",'1_1.6666666666666667'),
-                #           (2,"gaussian",'2.3333333333333335_1.6666666666666667'),
-                #           (2,"gaussian",'2.3333333333333335_2.3333333333333335'),
-                #           (2,"exponential",'1_1.6666666666666667'),
-                #           (2,"exponential",'2.3333333333333335_1.6666666666666667')
-                ]
-        elif obstacle_slower:
-            re_do_list = [
-                # (1,"exponential",'0.6666666666666666_0.6666666666666666'),
-                #           (1,"exponential",'0.6666666666666666_2.3333333333333335'),
-                #           (1,"exponential",'2.3333333333333335_1.6666666666666667'),
-                #           (1,"exponential",'2.3333333333333335_2.3333333333333335'),
-                #           # (1,"exponential",'1.3333333333333333_0.6666666666666666'),
-                #           # (1,"exponential",'1.6666666666666667_0.6666666666666666'),
-                #           # (1,"exponential",'1.6666666666666667_1'),
-                #           # (1,"exponential",'1.6666666666666667_1.3333333333333333'),
-                #           # (1,"exponential",'1_1.6666666666666667'),
-                #           # (2,"gaussian",'1.3333333333333333_0.6666666666666666'),
-                #           # (2,"gaussian",'1.3333333333333333_1'),
-                #           # (2,"gaussian",'1.3333333333333333_2'),
-                #           # (2,"gaussian",'2.3333333333333335_2.3333333333333335'),
-                #           # (2,"gaussian",'2_1.3333333333333333'),
-                #           # (2,"gaussian",'2_2.3333333333333335'),
-                #           (2,"exponential",'0.6666666666666666_2.3333333333333335'),
-                #           (2,"exponential",'2.3333333333333335_1.6666666666666667'),
-                #           # (2,"exponential",'0.6666666666666666_1.3333333333333333'),
-                #           # (2,"exponential",'1.3333333333333333_0.6666666666666666'),
-                #           # (2,"exponential",'1_1.3333333333333333'),
-                #           # (2,"exponential",'1_2.3333333333333335')
-                  ]
-        elif borders_faster:
-            re_do_list = [
-                # (1,"exponential",'0.6666666666666666_2'),
-                #           (1,"exponential",'0.6666666666666666_2.3333333333333335'),
-                #           (1,"exponential",'1_0.6666666666666666'),
-                #           # (1,"exponential",'1_2.3333333333333335'),
-                #           # (1,"exponential",'2.3333333333333335_1.3333333333333333'),
-                #           (2,"gaussian",'0.6666666666666666_2'),
-                #           (2,"gaussian",'1.6666666666666667_1.3333333333333333'),
-                #           (2,"gaussian",'2.3333333333333335_1.3333333333333333'),
-                #           (2,"gaussian",'1.3333333333333333_0.6666666666666666'),
-                #           # (2,"gaussian",'1_0.6666666666666666'),
-                #           (2,"exponential",'1.3333333333333333_0.6666666666666666'),
-                #           (2,"exponential",'1_1.6666666666666667'),
-                #           (2,"exponential",'1_2.3333333333333335'),
-                          ]
-        else:
-            re_do_list = []
-    # re_do_list = []
     # G_1=get_graph_instance_1(N)
     G_2 = get_graph_instance_2(N)
     V,A,centers_ = get_nodes_and_edges(G_2,True)
@@ -341,8 +169,8 @@ for (_reversed__,one_border,borders_faster,obstacle_slower,snake_opt_path
             for __theta_p in Theta__[kernel_name]:
                 # if (norm_,kernel_name,__theta_p)!=(1,"exponential",'1_2'):
                 #     continue
-                if (re_do_list != [] and 
-                    not (norm_,kernel_name,__theta_p) in re_do_list): continue
+                # if (re_do_list != [] and 
+                #     not (norm_,kernel_name,__theta_p) in re_do_list): continue
                 
                 local_theta_neighborhood = [
                     __theta_p,
@@ -369,9 +197,8 @@ for (_reversed__,one_border,borders_faster,obstacle_slower,snake_opt_path
                 #T_iter=2
                     # N=3
                         
-                        pp = False
                         # pp = it==0
-                        # pp = True
+                        pp = pp_bol
                         # pp = it in [49,99,149,199]
                         
                         
@@ -379,8 +206,8 @@ for (_reversed__,one_border,borders_faster,obstacle_slower,snake_opt_path
                         M=3#3 for regular chessboard
                         Delta= N / (2**M)
                         
-                        _alpha__ = 11.
-                        _beta__ = 13.
+                        _alpha__ = 2.
+                        _beta__ = 7.
                         Plot_Instance_1 = False
                         Plot_Instance_2 = not Plot_Instance_1
                         
@@ -402,11 +229,13 @@ for (_reversed__,one_border,borders_faster,obstacle_slower,snake_opt_path
                         v_real=50#km/h
                         dist__=1.5
                         d_all_arcs={a : dist__ for a in A}
+                        for a in A:
+                            d_all_arcs[a[1],a[0]] = dist__
                         
                         if pp:pp=PdfPages(os.path.join(output_dir,
                             f"test_N{N}_ntest{it}_T{T_iter}_norm{norm_}"+
                             f"{'_reversed' if _reversed__ else ''}"+
-                            "_{kernel_name}"+
+                            f"_{kernel_name}"+
                             f"_theta{str(__theta_).replace('.','-')}"+
                             ("_two_border" if borders_faster else (
                             "_one_border" if one_border else (
@@ -544,7 +373,8 @@ for (_reversed__,one_border,borders_faster,obstacle_slower,snake_opt_path
                         
                         
                         sigma = np.ones(len(A)) * np.log(1.2) 
-                        v_prior = v_real*.5
+                        v_prior = v_real *(20 if obstacle_slower else 1
+                                    ) * (1 if borders_faster else 2)
                         
                         prior_NormalIG = {}
                         prior_NormalIG["mu"] = np.ones(len(A)
@@ -571,8 +401,9 @@ for (_reversed__,one_border,borders_faster,obstacle_slower,snake_opt_path
                             (len(A), len(A)))#
                         # PB_prior_Spatial["phi"]=dok_matrix((len(A), len(A)), dtype=np.float64)
                         PB_prior_Spatial["name"] = "PB_"+kernel_name+"_"+str(
-                            PB_prior_Spatial["theta"])
+                            np.round(PB_prior_Spatial["theta"]/dist__,1))
                         PB_prior_Spatial["reversed"] = _reversed__
+                        PB_prior_Spatial["generate_cov_matrix"] = False
                         
                         PA_prior_Spatial = {}
                         PA_prior_Spatial["mu"] = np.ones(len(A)
@@ -589,9 +420,9 @@ for (_reversed__,one_border,borders_faster,obstacle_slower,snake_opt_path
                             (len(A), len(A)))#
                         # PA_prior_Spatial["phi"]=dok_matrix((len(A), len(A)), dtype=np.float64)
                         PA_prior_Spatial["name"] = "PA_"+kernel_name+"_"+str(
-                            PA_prior_Spatial["theta"])
+                            np.round(PA_prior_Spatial["theta"]/dist__,1))
                         PA_prior_Spatial["reversed"] = _reversed__
-                        
+                        PA_prior_Spatial["generate_cov_matrix"] = False
                         
                         if not any([one_border,borders_faster,
                                     obstacle_slower,snake_opt_path]):
@@ -691,13 +522,17 @@ for (_reversed__,one_border,borders_faster,obstacle_slower,snake_opt_path
                         plot_distribution(PB_spatial_distribution,
                             pp,plt,"mu_density_before_training")
                         (regret_,Paths_,Observed_values_,
-                         Paths_expert,mu_updates,Time_
-                         )=TS_Stationary(T_iter,G_2,instance__,sigma,
-                                         d_all_arcs,
-                                         [non_corrated_dist,
+                         Paths_expert,mu_updates,Time_,Exp_obj
+                         ) = TS_Stationary(T_iter,G_2,
+                             truth_sampler(artificial_instance_sampler(
+                                 instance__ , sigma ,
+                                 borders_faster , obstacle_slower),
+                             V,sample_truth_from_mean(
+                                 instance__,sigma,A)),#instance__,sigma,
+                             d_all_arcs,[non_corrated_dist,
                                           PB_spatial_distribution,
-                                          PA_spatial_distribution],
-                                         borders_faster,obstacle_slower)#
+                                          PA_spatial_distribution]#,borders_faster,obstacle_slower
+                                         )#
                         
                         
                         
@@ -760,51 +595,52 @@ for (_reversed__,one_border,borders_faster,obstacle_slower,snake_opt_path
                                 pp,plt,"mu_density_after_training")
                         
                         
+                        # if Plot_Instance_1:
+                        #     for j,obs__ in enumerate(Paths_NormalIG):
+                        #         edge_color_instance_2=[ 
+                        #             (-np.log(mu_updates[0][j][i]#
+                        #               #   'r'  if int( centers_[i][0]/Delta )%2==
+                        #               # int( centers_[i][1]/Delta )%2 else 'b' 
+                        #               ) if A[i] not in obs__[1] else np.float("NaN")#'k'
+                        #              ) for i in range(len(A))]
+                        #         get_plot(G=G_2,
+                        #                  edge_color_=edge_color_instance_2,
+                        #                  pp=pp,plt_=plt,Title=f"{obs__[0]}",
+                        #                  _paths_=obs__[1])
+                        
+                        
+                        # if Plot_Instance_2:
+                        #     for j,obs__ in enumerate(Paths_NormalIG):
+                        #         edge_color_instance_2=[ 
+                        #             -np.log(mu_updates[0][j][i]#'k'
+                        #              ) if A[i] not in obs__[1] else 
+                        #             np.float("NaN") for i in range(len(A))]
+                        #         get_plot(G=G_2,
+                        #                  edge_color_=edge_color_instance_2,
+                        #                  pp=pp,plt_=plt,Title=f"{obs__[0]}",
+                        #                  _paths_=obs__[1])
+                        
+                        
                         if Plot_Instance_1:
-                            for j,obs__ in enumerate(Paths_NormalIG):
-                                edge_color_instance_2=[ 
-                                    ((-mu_updates[0][j][i]#
-                                      #   'r'  if int( centers_[i][0]/Delta )%2==
-                                      # int( centers_[i][1]/Delta )%2 else 'b' 
-                                      ) if A[i] not in obs__[1] else -N/2#'k'
-                                     ) for i in range(len(A))]
-                                get_plot(G=G_2,
-                                         edge_color_=edge_color_instance_2,
-                                         pp=pp,plt_=plt,Title=f"{obs__[0]}",
-                                         _paths_=obs__[1])
-                        
-                        
-                        if Plot_Instance_2:
-                            for j,obs__ in enumerate(Paths_NormalIG):
-                                edge_color_instance_2=[ 
-                                    (-mu_updates[0][j][i]#'k'
-                                     ) for i in range(len(A))]
-                                get_plot(G=G_2,
-                                         edge_color_=edge_color_instance_2,
-                                         pp=pp,plt_=plt,Title=f"{obs__[0]}",
-                                         _paths_=obs__[1])
-                        
-                        
-                        if Plot_Instance_1:
-                            for Paths_Spatial_ in [PB_Paths_Spatial_,
-                                                   PA_Paths_Spatial_]:
+                            for j___,Paths_Spatial_ in enumerate([Paths_NormalIG,
+                                    PB_Paths_Spatial_, PA_Paths_Spatial_]):
                                 for j,obs__ in enumerate(Paths_Spatial_):
-                                    edge_color_instance_2=[ 
-                                        ((-mu_updates[1][j][i]#
+                                    get_plot(G=G_2,
+                                             edge_color_=[ 
+                                        (-np.log(mu_updates[j___][j][i]#
                                             # 'r'  if int( centers_[i][0]/Delta )%2==
                                             #                     int( centers_[i][1]/Delta )%2 else 'b' 
-                                            ) if A[i] not in obs__[1] 
-                                         else -N/2#'k'
-                                         ) for i in range(len(A))]
-                                    get_plot(G=G_2,
-                                             edge_color_=edge_color_instance_2,
+                                            )# if A[i] not in obs__[1] 
+                                         # else float("NaN")#'k'
+                                         ) for i in range(len(A))],
                                              pp=pp,plt_=plt,Title=f"{obs__[0]}",
                                              _paths_=obs__[1])
-                            edge_color_instance_2=[ ((-instance__[i]
+                            edge_color_instance_2=[ (-(instance__[i]
                                                       #'r'  if int( centers_[i][0]/Delta )%2==
                                                             # int( centers_[i][1]/Delta )%2 else 'b' 
-                                                ) if A[i] not in 
-                                                Paths_expert[-1][1] else -N/2#'k'
+                                                ) #if A[i] not in 
+                                                # Paths_expert[-1][1] else 
+                                                # float("NaN")#'k'
                                                 ) for i in range(len(A))]
                             get_plot(G=G_2,
                                      edge_color_=edge_color_instance_2,
@@ -813,19 +649,21 @@ for (_reversed__,one_border,borders_faster,obstacle_slower,snake_opt_path
                                      _paths_=Paths_expert[-1][1]
                                      )
                         if Plot_Instance_2:
-                            for Paths_Spatial_ in [PB_Paths_Spatial_,
-                                                   PA_Paths_Spatial_]:
+                            for j___,Paths_Spatial_ in enumerate([Paths_NormalIG,
+                                    PB_Paths_Spatial_, PA_Paths_Spatial_]):
                                 for j,obs__ in enumerate(Paths_Spatial_):
-                                    edge_color_instance_2=[ (-mu_updates[1][j][i]#_edge_color_instance_2[i] 
-                                        # if A[i] not in obs__[1] else -N/2#'k'
-                                        ) for i in range(len(A))]
+                                    # edge_color_instance_2=
                                     get_plot(G=G_2,
-                                             edge_color_=edge_color_instance_2,
+                                             edge_color_=[ (-np.log(
+                                        mu_updates[j___][j][i])#_edge_color_instance_2[i] 
+                                        # if A[i] not in obs__[1] else 
+                                        # float("NaN")#'k'
+                                        ) for i in range(len(A))],
                                              pp=pp,plt_=plt,Title=f"{obs__[0]}",
                                              _paths_=obs__[1])
                             edge_color_instance_2=[ (-instance__[i]#_edge_color_instance_2[i] 
-                                    if A[i] not in Paths_expert[-1][1] 
-                                    else -instance__[i]#'k'
+                                    # if A[i] not in Paths_expert[-1][1] 
+                                    # else float("NaN")#-instance__[i]#'k'
                                     ) for i in range(len(A))]
                             get_plot(G=G_2,edge_color_=edge_color_instance_2,
                                      pp=pp,plt_=plt,
@@ -836,7 +674,7 @@ for (_reversed__,one_border,borders_faster,obstacle_slower,snake_opt_path
                                       regret_NormalIG,
                                       [PB_regret_Spatial_,
                                        PA_regret_Spatial_],pp,plt)
-                        if pp:
+                        if pp_bol:
                             pp.close()
                 if output_data_file:
                     (pd.DataFrame.from_dict(registered_results)).to_csv(
