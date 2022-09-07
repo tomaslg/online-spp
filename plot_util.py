@@ -68,7 +68,9 @@ def get_plot(G,edge_color_,pp,plt_,Title="",_paths_=[]):
                      node_size=100/(len(G.nodes())**.5),
                      arrowsize=60/(len(G.nodes())**.5),
                      edge_cmap=plt_.get_cmap("RdYlGn_r"),#edge_cmap=plt_.get_cmap("RdYlGn"),#plt.cm.Blues,cmap="RdYlGn",
-                     edge_color=edge_color_)
+                     edge_color=edge_color_,
+                     # missing_kwds= dict(color = "k",)
+                     )
     if len(_paths_)>0:
         path_pos = {(i,j) : pos[(i,j)] for (i,j) in pos.keys()
                     if (i,j) in (
@@ -101,18 +103,15 @@ def plot_regret_t(prior_Spatial_name,regret_NormalIG,regret_Spatial_,pp,plt_):
     plt_.plot((list(range(1,len(regret_NormalIG)+1))), 
              regret_NormalIG, 
              label='sum(regret_NormalIG)/T='+
-             f'{(regret_NormalIG[-1])}', 
+             f'{np.round(regret_NormalIG[-1],2)}', 
              color='k')
-    plt_.plot((list(range(1,len(regret_Spatial_[0])+1))), 
-             regret_Spatial_[0], 
-             label='sum(regret_Spatial_PB'+
-             f'{prior_Spatial_name[0]})/T={regret_Spatial_[0][-1]}', 
-             color='b')
-    plt_.plot((list(range(1,len(regret_Spatial_[1])+1))), 
-             regret_Spatial_[1], 
-             label='sum(regret_Spatial_PA'+
-             f'{prior_Spatial_name[1][0]})/T={regret_Spatial_[1][-1]}', 
-             color='r')
+    colors_ = ['b','r']
+    for _color, regret_Spatial, name in zip(colors_, regret_Spatial_, prior_Spatial_name): 
+        plt_.plot((list(range(1,len(regret_Spatial)+1))), 
+                 regret_Spatial, 
+                 label='sum(regret_'+
+                 f'{name})/T={np.round(regret_Spatial[-1],2)}', 
+                 color=_color)
     plt_.legend()
     font = {'family': 'serif',
             'color':  'darkred',
@@ -142,3 +141,54 @@ def get_graph_instance_1(N=20):
 
 def get_graph_instance_2(N=20):
     return nx.grid_2d_graph(N,N,periodic=False,create_using=nx.Graph)
+
+
+
+# import matplotlib.pyplot as plt
+import pandas as pd
+import subprocess
+# subprocess.check_output('conda activate geo', shell=True)
+import geopandas as gpd
+# import psycopg2
+from shapely.geometry import LineString
+from matplotlib.font_manager import FontProperties
+
+    
+def plot_real_life_instance(values,title,pp,plt_):
+    # data 
+    # sql = """select w.id as arc, n1.latitude as lat1, n1.longitude as lon1, 
+    #      n2.latitude as lat2, n2.longitude as lon2, s.speed as speed
+    #      from way w join node as n1 on w.node1 = n1.id 
+    #      join node as n2 on w.node2 = n2.id join speed as s
+    #      on w.id = s.id where s.hour = 8 and (valores is not NULL and array_length(s.valores, 1) > 1)"""
+
+    data = dict()
+    data['LineString_obj'] = list()
+    for i in range(len(values)):
+        data['LineString_obj'].append(LineString([[float(values[i][2]), 
+                                                    float(values[i][1])], 
+                                                  [float(values[i][4]), 
+                                                    float(values[i][3])]]))
+    data['speed'] = [float(values[i][5]) for i in range(len(values))]
+    df = pd.DataFrame(data)
+    geo_df = gpd.GeoDataFrame(df, geometry = 'LineString_obj')
+    
+    # create figure and axes, assign to subplot
+    fig, ax = plt_.subplots(figsize=(15,15)) 
+    geo_df.plot(column='speed', ax=ax, legend=True, cmap='RdYlGn', 
+                legend_kwds={'shrink': 0.45, 'label': 'meters/second'},
+                missing_kwds= dict(color = "k",)) #lightgrey brg
+    font = FontProperties()
+    #font.set_family('serif')
+    plt_.title(title#"Beijing"
+                , fontdict={'fontsize': 'x-large', 'fontproperties': font}, fontweight='bold')
+    plt_.ylabel("Latitude", fontdict={'fontsize': 'large', 'fontproperties': font})
+    plt_.xlabel("Longitude", fontdict={'fontsize': 'large', 'fontproperties': font})
+    # fig.savefig("../../real_instance.pdf", bbox_inches='tight')
+    if pp:
+        plt_.savefig(pp, format='pdf')
+    else:
+        plt_.show()
+    plt_.close()
+
+
