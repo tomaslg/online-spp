@@ -6,9 +6,11 @@ Created on Tue Apr 26 23:40:04 2022
 """
 
 import os
+import sys
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
 from scipy.sparse import dok_matrix
+import pandas as pd
 
 from distrib import (NormalIG,Spatial_Metric,Spatial_Metric_2,Spatial_Metric3,
                      naive_approach,np)
@@ -100,6 +102,36 @@ def read_from_arcs_nodes(_paths_dir , arcs_paths_fl , nodes_fl,__theta_,
     speeds_ = {}
     d_all_arcs = {}
     centers_arcs = {}
+    # sum_avg_speed_per_type = {}
+    # n_obs_per_type = {}
+    max_speed = {'primary': 0.013952060298131714,
+     'service': 0.016185045276776066,
+     'secondary': 0.013142365972990917,
+     'tertiary': 0.011991765896341483,
+     'unclassified': 0.016586339453121653,
+     'residential': 0.012556273419106957,
+     'trunk': 0.028051301428762634,
+     'secondary_link': 0.012621462349693325,
+     'trunk_link': 0.021720378528622842,
+     'primary_link': 0.016184201440056726,
+     'motorway': 0.037081843831752594,
+     'construction': 0.023001513879863184,
+     'tertiary_link': 0.012394071883019542, 
+     'cycleway': 0.011092236991396128, 
+     'motorway_link': 0.032905218269646444, 
+     'living_street': 0.014658973938660752, 
+     'track': 0.028663446979922465,
+     'proposed': 0.013689777028947817,
+     'platform': 0.006422628455614414}
+    for key_arc_type in max_speed:
+        if max_speed[key_arc_type] > .025:
+            max_speed[key_arc_type] = .025
+        elif max_speed[key_arc_type]>.02:
+            max_speed[key_arc_type] = .02
+        elif max_speed[key_arc_type]>.015:
+            max_speed[key_arc_type] = .015
+        else:
+            max_speed[key_arc_type] = .011
     # header = lines_array_[i_].split(";")
     # paths_dtn_ = {}
     while i_ < len(lines_array_):
@@ -108,7 +140,8 @@ def read_from_arcs_nodes(_paths_dir , arcs_paths_fl , nodes_fl,__theta_,
         arc_ = (int(line_atr[col_index["node1"]])
             , int(line_atr[col_index["node2"]]))
         # arc_ = sorted_tup(arc_)
-        if not int(line_atr[col_index["id"]]) in A: 
+            
+        if int(line_atr[col_index["id"]]) not in A:
             try:
                 lat1, lon1 = nodes[arc_ [0]]
                 lat2, lon2 = nodes[arc_ [1]]
@@ -118,6 +151,15 @@ def read_from_arcs_nodes(_paths_dir , arcs_paths_fl , nodes_fl,__theta_,
             #     max(lon1,lon2)>=116.32 and min(lon1,lon2)<=116.354):
             #     continue
             # # id_arc = int(line_atr[col_index["id"]])
+            dist__ = haversine(lon1, lat1, lon2, lat2)
+            values_ = line_atr[col_index["valores"]].replace(
+                "{","").replace("}","").split(",")
+            values_ = [dist__/float(val) for val in values_]
+            # if len([val for val in values_ if val<=max_speed[line_atr[
+            #         col_index["type"]]]])<1: continue
+            # # if line_atr[col_index["type"]] not in n_obs_per_type:
+            # #     sum_avg_speed_per_type[line_atr[col_index[
+            # #         "type"]]] = n_obs_per_type[line_atr[col_index["type"]]] = 0
             A.append(int(line_atr[col_index["id"]]))
             arcs[A[-1]] = arc_
             
@@ -126,15 +168,34 @@ def read_from_arcs_nodes(_paths_dir , arcs_paths_fl , nodes_fl,__theta_,
             # (int(line_atr[col_index["node1"]])
             #     , int(line_atr[col_index["node2"]]))
             # nx.shortest_path(G,)
-            d_all_arcs[arc_] = haversine(lon1, lat1, lon2, lat2)
+            d_all_arcs[arc_] = dist__# haversine(lon1, lat1, lon2, lat2)
             speeds_[arc_] = []
-        values_ = line_atr[col_index["valores"]].replace(
-            "{","").replace("}","").split(",")
         for val in values_:
+            # if val<=max_speed[line_atr[col_index["type"]]]:
             speeds_[arcs[int(
-                line_atr[col_index["id"]])]
-                ].append(d_all_arcs[arc_]/float(val))
-    
+                    line_atr[col_index["id"]])]
+                    ].append(val)
+        # sum_avg_speed_per_type[line_atr[col_index[
+        #             "type"]]] += np.mean(speeds_[arcs[int(
+        #             line_atr[col_index["id"]])]])
+        # n_obs_per_type[line_atr[col_index["type"]]] += 1
+                    # d_all_arcs[arc_]/float(val))
+        # if len(speeds_[arcs[int(
+        #         line_atr[col_index["id"]])]
+        #         ])<10:
+        #     speeds_.pop(arcs[int(
+        #         line_atr[col_index["id"]])]
+        #         )
+    # max_speed = 0.
+    # for sample_array in speeds_.values():
+    #     max_speed = max(max_speed,max(sample_array))
+    # for arc_,sample_array in speeds_.items():
+    #     for sample_index in range(len(sample_array)):
+    #         sample_array[sample_index] *= .03 / max_speed
+    # # print([(type__,
+    # #     sum_avg_speed_per_type[type__]/n_obs_per_type[type__]) for 
+    # #        type__ in sum_avg_speed_per_type
+    # #     ])
     
     G_ = nx.DiGraph()
     G_.add_nodes_from(nodes)
@@ -221,7 +282,30 @@ def sample_truth_from_mean(d_all_arcs , speeds_, mapping_arc_id):
                                         # for j_,a in enumerate(A)}
 
 def real_instance_sampler(*args):
-    d_all_arcs , speeds_, mapping_arc_id, nodes = args
+    d_all_arcs , speeds_, mapping_arc_id, nodes, target, source, t_s_index = args
+    target_, source_ = target, source
+    set_of_pairs = [(29212, 41103),#0
+        (62067, 18216),#1
+        (95313, 59982),#2
+        (63033, 72819),#3
+        # (75986, 85790),
+        # (29049, 66221),
+        (100118, 57423),#6
+        # (14587, 22808),
+        # (10849, 48575),
+        # (34184, 32917),
+        (87250, 33750),#10
+        (13789, 99505),#11
+        # (67969, 93000),
+        (56202, 26804),#13
+        # (1641, 33498),
+        # (15168, 9595),
+        (90382, 17249),#16
+        # (84479, 42356),
+        (6880, 15937)]#,#18
+        # (17095, 73911)]
+    if target_==source_:
+        target_, source_ = set_of_pairs[t_s_index]
     def __function(V):
         # source = target = np.random.randint(len(V))
         # while source==target:
@@ -230,7 +314,9 @@ def real_instance_sampler(*args):
         nodes_names = [key for key in nodes.keys()]
         # r = np.random.randint(81)
         # print(r)
-        bol = True
+        bol = target_==source_ and t_s_index==-1
+        if not bol:
+            target, source = target_, source_
         increasing_lon = np.argsort([val[1] for val in list(nodes.values())
             # nodes[i][1] for i in V
             ])
@@ -241,16 +327,17 @@ def real_instance_sampler(*args):
             target, source = np.random.randint(85796), np.random.randint(85796)
             # print(target, source)
             target, source = nodes_names[
-                increasing_lon[0] # argmin
-                ], nodes_names[increasing_lat[37] # 37
+                increasing_lon[target] # argmin
+                ], nodes_names[increasing_lat[source] # 37
                     # np.argmin([val[0] for val in nodes.values()])
                     ]
-            bol = False
-            # bol = haversine(nodes[source][1], nodes[source][0], nodes[target][1],
-            #                 nodes[target][0]) <= 33.
-        # # print(target, source, haversine(nodes[source][1], nodes[source][0], nodes[target][1],
-        # #                     nodes[target][0]))
-        # target, source = 97973, 75384
+            # bol = False
+            bol = haversine(nodes[source][1], nodes[source][0], nodes[target][1],
+                            nodes[target][0]) <= 23.#33.
+        print(target, source, haversine(nodes[source][1], nodes[source][0], nodes[target][1],
+                              nodes[target][0]))
+        # # target, source = 97973, 75384
+        # target, source = 29212, 41103
         return source,target,np.log([np.random.choice(
             speeds_[mapping_arc_id[index]]) #if np.random.random()>=.999 else 
             # np.mean(speeds_[mapping_arc_id[index]]) 
@@ -299,23 +386,36 @@ if __name__ == "__main__":
     v_real = v_real / 3600
     _paths_dir = os.path.join(os.path.join(
         os.path.dirname(os.getcwd()), "data"), 
-        "small_real")
+        # "small_real")
         # "large_real")
-    run_spatial = True
+        "new_large")
+    run_spatial = False
     run_naive = not run_spatial
-    pp = True
+    try:
+        T_iter = int(sys.argv[1])
+    except IndexError:
+        T_iter = 2
+    try:
+        target, source = int(sys.argv[2]), int(sys.argv[3])
+    except IndexError:
+        target = source = 0
+    try:
+        t_s_index = int(sys.argv[2]) % 10
+    except IndexError:
+        t_s_index = -1
+    pp = T_iter==2
+    id_run = np.random.randint(2**31)
     only_show_observed_arcs = not run_spatial
-    period_mod_plot = 20
     if pp: pp = PdfPages(os.path.join(_paths_dir,
-                        f"real_instance_run_{np.random.randint(2**31)}"+
+                        f"real_instance_run_{id_run}"+
                         ".pdf"))
     arcs_paths_fl = "arcs.csv"
     nodes_fl = "nodes.csv"
-    T_iter = 20
-    v_prior = v_real * 2
-    _alpha__ = 4.
-    _beta__ = 10.
-    __theta_ = 0.15
+    period_mod_plot = int(T_iter/4) if T_iter>=4 else 1
+    v_prior = v_real
+    _alpha__ = 1.
+    _beta__ = 3#10.
+    __theta_ = 0.25
     kernel_name = "exponential"
     kernel = Kernels[kernel_name]
     (G_,V,nodes,A_,arcs,d_all_arcs,dist_for_kernel_cmp,speeds_,mapping_arc_id
@@ -331,12 +431,18 @@ if __name__ == "__main__":
     
     if run_naive:
         prior_Naive = {}
-        prior_Naive["mu"] = np.ones(len(A_)) * np.log(v_prior)
-        prior_Naive["kappa"] = np.ones(len(A_)) 
-        prior_Naive["alpha"] = np.ones(len(A_)) *_alpha__
-        prior_Naive["beta"] = np.ones(len(A_)) * _beta__
-        prior_Naive["name"] = "Naive"
-        naive_dist = naive_approach(prior_Naive)
+        naive_dist = {}
+        init_naive = 0
+        end_naive = 5
+        for j__ in range(init_naive,end_naive):#5):
+            prior_Naive[j__] = {}
+            prior_Naive[j__]["mu"] = np.ones(len(A_)) * np.log(v_prior)
+            prior_Naive[j__]["kappa"] = np.ones(len(A_)) 
+            prior_Naive[j__]["alpha"] = np.ones(len(A_)) *_alpha__
+            prior_Naive[j__]["beta"] = np.ones(len(A_)) * _beta__
+            prior_Naive[j__]["name"] = f"Naive_{np.round(.1 + (j__ * .2),2)}"
+            prior_Naive[j__]["epsilon"] = .1 + (j__ * .2)
+            naive_dist[j__] = naive_approach(prior_Naive[j__])
     
     if run_spatial:
         PB_prior_Spatial = {}
@@ -423,92 +529,107 @@ if __name__ == "__main__":
     if pp:
         from plot_util import (plot_distribution,plot_histogram_sigma,
                                plot_real_life_instance,plot_regret_t)
-        plot_histogram_sigma(non_corrated_dist,
-            pp,plt,"Histogram_sigma2_before_training")
-        # plot_histogram_sigma(PA_spatial_distribution,
+        # plot_histogram_sigma(non_corrated_dist,
         #     pp,plt,"Histogram_sigma2_before_training")
-        # plot_histogram_sigma(PB_spatial_distribution,
-        #     pp,plt,"Histogram_sigma2_before_training")
-        plot_distribution(non_corrated_dist,
-            pp,plt,"mu_density_before_training")
-        # plot_distribution(PA_spatial_distribution,
+        # # plot_histogram_sigma(PA_spatial_distribution,
+        # #     pp,plt,"Histogram_sigma2_before_training")
+        # # plot_histogram_sigma(PB_spatial_distribution,
+        # #     pp,plt,"Histogram_sigma2_before_training")
+        # plot_distribution(non_corrated_dist,
         #     pp,plt,"mu_density_before_training")
-        # plot_distribution(PB_spatial_distribution,
-        #     pp,plt,"mu_density_before_training")
+        # # plot_distribution(PA_spatial_distribution,
+        # #     pp,plt,"mu_density_before_training")
+        # # plot_distribution(PB_spatial_distribution,
+        # #     pp,plt,"mu_density_before_training")
     
     distributions_ = [non_corrated_dist]
     if run_spatial:
         distributions_.append(PA_spatial_distribution)
     if run_naive:
-        distributions_.append(naive_dist)
-    (regret_,Paths_,Observed_values_,Paths_expert,mu_updates,Time_,Exp_obj
-     ) = TS_Stationary(
+        for j__,naive_dist_ in naive_dist.items():
+            distributions_.append(naive_dist_)
+    (regret_,Paths_,Observed_values_,Paths_expert,mu_updates,Time_,Exp_obj,
+     delta_) = TS_Stationary(
          T_iter,G_,truth_sampler(real_instance_sampler(
              d_all_arcs , speeds_, {id_arc : arc for id_arc,arc in enumerate(G_.edges())},
-             nodes),V,sample_truth_from_mean(
+             nodes, target, source, t_s_index),V,sample_truth_from_mean(
                  d_all_arcs , speeds_, {id_arc : arc for id_arc,arc in enumerate(G_.edges())})),
          d_all_arcs,distributions_)#
     
     regret_NormalIG = regret_[0]
-    #                     PB_regret_Spatial_ = regret_[1]
-    PA_regret_Spatial_ = regret_[-1]
     Paths_NormalIG = Paths_[0]
-    #                     PB_Paths_Spatial_ = Paths_[1]
-    PA_Paths_Spatial_ = Paths_[-1]
     Time_NormalIG = Time_[0]
-    #                     PB_Time_Spatial_ = Time_[1]
-    PA_Time_Spatial_ = Time_[-1]
+    
+    if run_naive:
+        regret_Naive = {}
+        Paths_Naive = {}
+        Time_Naive = {}
+        for j__ in range(1,len(Time_)-1):
+            regret_Naive[j__] = regret_[j__]
+            Paths_Naive[j__] = Paths_[j__]
+            Time_Naive[j__] = Time_[j__]
+    
+    
+    if run_spatial:
+        #                     PB_regret_Spatial_ = regret_[1]
+        PA_regret_Spatial_ = regret_[-1]
+        #                     PB_Paths_Spatial_ = Paths_[1]
+        PA_Paths_Spatial_ = Paths_[-1]
+        #                     PB_Time_Spatial_ = Time_[1]
+        PA_Time_Spatial_ = Time_[-1]
     
     if pp:
-        plot_histogram_sigma(non_corrated_dist,
-            pp,plt,"Histogram_sigma2_after_training")
-        # plot_histogram_sigma(PB_spatial_distribution,
-        #         pp,plt,"Histogram_sigma2_after_training")
-        # plot_histogram_sigma(PA_spatial_distribution,
-        #         pp,plt,"Histogram_sigma2_after_training")
-        plot_distribution(non_corrated_dist,
-                pp,plt,"mu_density_after_training")
-        # plot_distribution(PB_spatial_distribution,
+        # plot_histogram_sigma(non_corrated_dist,
+        #     pp,plt,"Histogram_sigma2_after_training")
+        # # plot_histogram_sigma(PB_spatial_distribution,
+        # #         pp,plt,"Histogram_sigma2_after_training")
+        # # plot_histogram_sigma(PA_spatial_distribution,
+        # #         pp,plt,"Histogram_sigma2_after_training")
+        # plot_distribution(non_corrated_dist,
         #         pp,plt,"mu_density_after_training")
-        # plot_distribution(PA_spatial_distribution,
-        #         pp,plt,"mu_density_after_training")
-        mean_real_instance = sample_truth_from_mean(d_all_arcs , speeds_, 
+        # # plot_distribution(PB_spatial_distribution,
+        # #         pp,plt,"mu_density_after_training")
+        # # plot_distribution(PA_spatial_distribution,
+        # #         pp,plt,"mu_density_after_training")
+        mean_real_instance = sample_truth_from_mean(d_all_arcs , speeds_,
                         {id_arc : arc for id_arc,arc in enumerate(G_.edges())})
-        visited_arcs = [[],[]]
+        visited_arcs = [[] for j__ in range(len(Time_))]
         for j,path in enumerate(Paths_expert):
             if not run_spatial and j%period_mod_plot!=0 and j!=len(
-                Paths_expert)-1 and (j>0 and max(regret_NormalIG[j] -
-                        regret_NormalIG[j-1], PA_regret_Spatial_[j] -
-                        PA_regret_Spatial_[j-1])<100): continue
+                Paths_expert)-1 and (j>0 and regret_NormalIG[j] -
+                        regret_NormalIG[j-1]<1.): continue
             if True:#j==len(Paths_expert)-1:
                 values = list()
                 for i,a in enumerate(G_.edges()):
-                    value = min(mean_real_instance[a]*1000,40)
+                    value = min(
+                        mean_real_instance[a]*1000
+                                 ,20
+                                )
                     values.append([0,nodes[a[0]][0],nodes[a[0]][1],
                             nodes[a[1]][0],nodes[a[1]][1],
                             (value 
                               if not a in path[1] and
                               not (a[1],a[0]) in path[1]
                               else "NaN") ])
-                plot_real_life_instance(values,f"Expert_it={j+1}"+
-                            f"_Obj.={np.round(Exp_obj[j],2)}"
-                            ,pp,plt)
+                plot_real_life_instance(values,"Expert" + #f"Expert [it={j+1}]"+
+                            f" Objective = {np.round(Exp_obj[j]/60,2)} [min]"
+                            ,pp,plt,color_scale_='gist_yarg')
                 values = list()
                 for i,a in enumerate(G_.edges()):
-                    value = min(mean_real_instance[a]*1000,40)
+                    value = min(mean_real_instance[a]*1000,20
+                             )
                     values.append([0,nodes[a[0]][0],nodes[a[0]][1],
                             nodes[a[1]][0],nodes[a[1]][1],
                             value ])
                 if j==len(Paths_expert)-1:
-                    plot_real_life_instance(values,"Instance",pp,plt)
+                    plot_real_life_instance(values,"Beijing",pp,plt)
         
-            for j__ in range(2):
+            for j__ in range(len(Time_)):
             # for j in range(len(mu_updates[j__])):
                 # if j!=len(mu_updates[j__])-1: continue
                 if not run_spatial and j%period_mod_plot!=0 and j!=len(
-                    mu_updates[j__])-1 and (j>0 and max(regret_NormalIG[j] -
-                        regret_NormalIG[j-1], PA_regret_Spatial_[j] -
-                        PA_regret_Spatial_[j-1])<100): continue
+                    mu_updates[j__])-1 and (j>0 and regret_NormalIG[j] -
+                        regret_NormalIG[j-1]<1.): continue
                 for path_prime in Paths_[j__][:(j+1)]:
                     for a in path_prime[1]:
                         if a not in visited_arcs[j__]:
@@ -518,7 +639,8 @@ if __name__ == "__main__":
                     a = mapping_arc_id[i]
                     if only_show_observed_arcs and a not in visited_arcs[j__]:
                         continue
-                    value = min(mu_updates[j__][j][i]*1000,40) 
+                    value = min(mu_updates[j__][j][i]*1000,20
+                                ) 
                     values.append([0,nodes[a[0]][0],nodes[a[0]][1],
                                 nodes[a[1]][0],nodes[a[1]][1],
                                 (value
@@ -526,22 +648,46 @@ if __name__ == "__main__":
                                   not (a[1],a[0]) in Paths_[j__][j][1]
                                   else "NaN") ])
                 plot_real_life_instance(values,("Independent" if j__==0 else
-                        "Spatial_PA" if run_spatial else "Naive")+f"_it={j+1}"+
-                        f"_Acc. Pseudo-Regret={np.round(regret_[j__][j],2)}",
+                        "Spatial_PA" if run_spatial else
+                        f"Naive_{np.round(.1 + ((init_naive + j__ - 1) * .2),2)}"
+                        )+f"_it={j+1}"+
+                        f"_Pseudo-Regret={np.round(delta_[j__][j],2)}",
                         pp,plt)
                 values = list()
                 for i in range(len(G_.edges())):
                     a = mapping_arc_id[i]
                     if only_show_observed_arcs and a not in visited_arcs[j__]:
                         continue
-                    value = min(mu_updates[j__][j][i]*1000,40) 
+                    value = min(mu_updates[j__][j][i]*1000,20
+                                ) 
                     values.append([0,nodes[a[0]][0],nodes[a[0]][1],
                                 nodes[a[1]][0],nodes[a[1]][1],value ])
                 plot_real_life_instance(values,("Independent" if j__==0 else
-                        "Spatial_PA" if run_spatial else "Naive")+f"_it={j+1}",pp,plt)
+                        "Spatial_PA" if run_spatial else
+                        f"Naive_{np.round(.1 + ((init_naive + j__ - 1) * .2),2)}")+f"_it={j+1}",
+                        pp,plt)
             
         plot_regret_t([("Spatial_" + PA_prior_Spatial["name"]
-                        ) if run_spatial else prior_Naive["name"]],
-                      regret_NormalIG, [PA_regret_Spatial_],pp,plt)
+                        ) if run_spatial else prior_Naive[j__]["name"]
+                       for j__ in range(init_naive, end_naive)],
+                      regret_NormalIG, [PA_regret_Spatial_ if run_spatial else
+                      regret_Naive[j__] for j__ in range(1,len(Time_)-1)],pp,plt)
         pp.close()
-    
+    (pd.DataFrame.from_dict(
+        {**{("Independent" if j__==0 else ("Spatial_PA" if run_spatial else 
+            f"Naive_{np.round(.1 + ((init_naive + j__ - 1) * .2),2)}")
+          ) : a_r  for j__,a_r in enumerate(regret_) }, **{
+              ("Independent" if j__==0 else ("Spatial_PA" if run_spatial else 
+            f"Naive_{np.round(.1 + ((init_naive + j__ - 1) * .2),2)}")
+          ) + "_delta" : a_r  for j__,a_r in enumerate(delta_)}}
+        )).to_csv(
+                    os.path.join(_paths_dir,
+                    f"SIMULATION_Regret_{T_iter}_"+
+                    ("Spatial_PA" if run_spatial else "Naive") + f"{id_run}"+
+                    # f"_norm{norm_}" + f"{'_reversed' if _reversed__ else ''}"+
+                    # ("_two_border" if borders_faster else (
+                    #     "_one_border" if one_border else (
+                    #     "_with_obstacle" if obstacle_slower else (
+                    #     "_chessboard" if not snake_opt_path else 
+                    #     "_snake"))) ) +
+                    ".csv"),index=False)
