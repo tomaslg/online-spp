@@ -38,7 +38,7 @@ def is_pos_def(x):
 
 class NormalIG:
     def __init__(self,prior):
-        self.name="NormalIG"
+        self.name="Independent Gaussian"
         self.mu0=prior["mu"]
         self.kappa0=prior["kappa"]
         self.alpha0=prior["alpha"]
@@ -87,7 +87,7 @@ class naive_approach(NormalIG):
     def __init__(self,prior):
         super().__init__(prior)
         self.name="Naive"
-        self.epsilon=.1
+        self.epsilon=prior["epsilon"]#.1
     def update_posterior(self,sumy,N):
         for key in sumy:
             self.mu[key]= sumy[key] / N[key]
@@ -419,7 +419,7 @@ class Spatial_Metric_2(NormalIG):#PA
 
         
         
-class Spatial_Metric3(NormalIG):
+class Spatial_Metric3(NormalIG):#PB
     def __init__(self,prior):
         super().__init__(prior)
         self.name="Spatial_"+prior["name"]

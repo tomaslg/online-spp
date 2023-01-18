@@ -9,6 +9,7 @@ Created on Thu Nov 18 16:02:14 2021
 
 # import numpy as np
 import os
+import sys
 import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
@@ -19,7 +20,7 @@ from scipy.sparse import dok_matrix
 from time import time
 from _meta_util import timer_func
 from distrib import (NormalIG,Spatial_Metric,Spatial_Metric_2,Spatial_Metric3,
-                     np)
+                     naive_approach,np)
 from TS import get_nodes_and_edges,TS_Stationary,nx,truth_sampler
     
 from plot_util import (show_plot,plot_distribution,plot_histogram_sigma,get_plot,
@@ -38,7 +39,7 @@ def gaussian(theta,rho):
 def exponential(theta,rho):
     return np.exp(-rho/theta)
 Kernels={#"hyperbolic" : hyperbolic , 
-        "gaussian" : gaussian , 
+        # "gaussian" : gaussian , 
         "exponential" : exponential
          }
 def general_multiplication(__theta_,dist__):
@@ -68,21 +69,35 @@ def artificial_instance_sampler(*args):
     return __function
 
 
+def get_next_type_arg(next_index, _type=int):
+    try:
+        if _type is int: return int(sys.argv[next_index])
+    except IndexError:
+        return 0
+
 output_dir=os.path.join(os.path.dirname(os.getcwd()),"output9")
 if not os.path.exists(output_dir):
     os.makedirs(output_dir)
 
 pp_bol = True
-norm_range_ = range(1,2)
-T_iter_set = range(50,51)
+norm_range_ = range(2,3)
+
+T_iter_set_size = get_next_type_arg(1) #int(sys.argv[1])
+if T_iter_set_size==0:
+    T_iter_set_size = (50, 51)
+else:
+    T_iter_set_size = (T_iter_set_size, get_next_type_arg(2))
+if T_iter_set_size[1]==0:
+    T_iter_set_size = (T_iter_set_size[0], T_iter_set_size[0] + 1)
+
+index_instance = get_next_type_arg(3)
+index_theta = get_next_type_arg(4)
+
+
+T_iter_set = range(T_iter_set_size[0], T_iter_set_size[1])
 N = 20
 nruns = 1
 output_data_file = False
-___theta____ = [#2/3, 
-                4/3#, 2,
-                # 8/3, 10/3, 4
-                #8/3,10/3,4
-    ]
 all_instances_ = [#reversed,one-border,start-get-out-of-the-slow-zone-and-come-back,
                   #avoid-an-obstacle,snake##,chessboard-non-smooth-no-theta
     # [True,True,False,False,False],#37(1)
@@ -96,6 +111,18 @@ all_instances_ = [#reversed,one-border,start-get-out-of-the-slow-zone-and-come-b
     [False,False,True,False,False],#11(4) start slow zone leave and enter
     # [False,False,False,False,False]#11(1)
     ]
+___theta____ = [2/3, 
+                4/3,#, 
+                2,
+                8/3,
+                10/3, 
+                4
+                #8/3,10/3,4
+    ]
+if index_instance>0:
+    all_instances_ = [all_instances_[index_instance - 1]]
+if index_theta>0:
+    ___theta____ = [___theta____[index_theta - 1]]
 
 # _reversed__ = True
 # borders_faster = True
@@ -206,8 +233,8 @@ for (_reversed__,one_border,borders_faster,obstacle_slower,snake_opt_path
                         M=3#3 for regular chessboard
                         Delta= N / (2**M)
                         
-                        _alpha__ = 2.
-                        _beta__ = 7.
+                        _alpha__ = 50. / (1 if one_border else 1)
+                        _beta__ = .05 * (3.5 if one_border else 1)
                         Plot_Instance_1 = False
                         Plot_Instance_2 = not Plot_Instance_1
                         
@@ -357,9 +384,9 @@ for (_reversed__,one_border,borders_faster,obstacle_slower,snake_opt_path
                             instance__= np.array( [V_arcs_dict[a] 
                                                    for a in A ] )
                     
-                        get_plot(G=G_2,edge_color_=-instance__,
+                        get_plot(G=G_2,edge_color_=instance__,
                                  pp=pp,plt_=plt,
-                                 Title="Instance")    
+                                 Title="")#Instance    
                         # T_real=.35/v_real #hours
                         
                         # uncorrelated_truth=( np.random.random(len(A)) + 0.1 
@@ -373,8 +400,9 @@ for (_reversed__,one_border,borders_faster,obstacle_slower,snake_opt_path
                         
                         
                         sigma = np.ones(len(A)) * np.log(1.2) 
-                        v_prior = v_real *(20 if obstacle_slower else 1
-                                    ) * (1 if borders_faster else 2)
+                        v_prior = .01 * v_real *(20 if obstacle_slower else 1
+                                    ) * (50 if borders_faster else 2) * (
+                                        27 if one_border else 1)
                         
                         prior_NormalIG = {}
                         prior_NormalIG["mu"] = np.ones(len(A)
@@ -385,6 +413,13 @@ for (_reversed__,one_border,borders_faster,obstacle_slower,snake_opt_path
                         prior_NormalIG["beta"] = np.ones(len(A)
                                                          ) * _beta__
                         
+                        prior_Naive = {}
+                        prior_Naive["mu"] = np.ones(len(A)) * np.log(v_prior)
+                        prior_Naive["kappa"] = np.ones(len(A)) 
+                        prior_Naive["alpha"] = np.ones(len(A)) *_alpha__
+                        prior_Naive["beta"] = np.ones(len(A)) * _beta__
+                        prior_Naive["name"] = "Naive"
+                        prior_Naive["epsilon"] = .1
                         
                         PB_prior_Spatial = {}
                         PB_prior_Spatial["mu"] = np.ones(len(A)
@@ -506,6 +541,7 @@ for (_reversed__,one_border,borders_faster,obstacle_slower,snake_opt_path
                                         
                         
                         non_corrated_dist = NormalIG(prior_NormalIG)
+                        naive_dist = naive_approach(prior_Naive)
                         # spatial_distribution = Spatial_Metric(prior_Spatial)
                         PA_spatial_distribution = Spatial_Metric_2(PA_prior_Spatial)
                         PB_spatial_distribution = Spatial_Metric3(PB_prior_Spatial)
@@ -522,7 +558,7 @@ for (_reversed__,one_border,borders_faster,obstacle_slower,snake_opt_path
                         plot_distribution(PB_spatial_distribution,
                             pp,plt,"mu_density_before_training")
                         (regret_,Paths_,Observed_values_,
-                         Paths_expert,mu_updates,Time_,Exp_obj
+                         Paths_expert,mu_updates,Time_,Exp_obj,delta_
                          ) = TS_Stationary(T_iter,G_2,
                              truth_sampler(artificial_instance_sampler(
                                  instance__ , sigma ,
@@ -531,7 +567,8 @@ for (_reversed__,one_border,borders_faster,obstacle_slower,snake_opt_path
                                  instance__,sigma,A)),#instance__,sigma,
                              d_all_arcs,[non_corrated_dist,
                                           PB_spatial_distribution,
-                                          PA_spatial_distribution]#,borders_faster,obstacle_slower
+                                          PA_spatial_distribution,
+                                          naive_dist]#,borders_faster,obstacle_slower
                                          )#
                         
                         
@@ -539,21 +576,26 @@ for (_reversed__,one_border,borders_faster,obstacle_slower,snake_opt_path
                         regret_NormalIG = regret_[0]
                         PB_regret_Spatial_ = regret_[1]
                         PA_regret_Spatial_ = regret_[2]
+                        regret_naive = regret_[3]
                         Paths_NormalIG = Paths_[0]
                         PB_Paths_Spatial_ = Paths_[1]
                         PA_Paths_Spatial_ = Paths_[2]
+                        Paths_naive = Paths_[3]
                         Time_NormalIG = Time_[0]
                         PB_Time_Spatial_ = Time_[1]
                         PA_Time_Spatial_ = Time_[2]
+                        Time_naive = Time_[3]
                         
                         for d_ in  range(len(regret_)):
                             # index_reg = 0
                             for name__,_pths in Paths_[d_]:
-                                kernel_iteration,regret_printted = (
-                                    name__.split(", "))
-                                dist_name,t_ = kernel_iteration.split("=")
-                                dist_name = dist_name.replace("_Iter","")
-                                t_ = int(t_.split("/")[0])
+                                # kernel_iteration,regret_printted = (
+                                #     name__.split(", "))
+                                dist_name,t_ = name__.split("$")[
+                                    0], int(name__.split("=")[-3].split(
+                                        "$")[0])
+                                # dist_name = dist_name.replace("_Iter","")
+                                # t_ = int(t_.split("/")[0])
                                 registered_results["distribution"].append(
                                     dist_name)
                                 registered_results["benchmark"].append(
@@ -623,11 +665,12 @@ for (_reversed__,one_border,borders_faster,obstacle_slower,snake_opt_path
                         
                         if Plot_Instance_1:
                             for j___,Paths_Spatial_ in enumerate([Paths_NormalIG,
-                                    PB_Paths_Spatial_, PA_Paths_Spatial_]):
+                                    PB_Paths_Spatial_, PA_Paths_Spatial_,
+                                    Paths_naive]):
                                 for j,obs__ in enumerate(Paths_Spatial_):
                                     get_plot(G=G_2,
                                              edge_color_=[ 
-                                        (-np.log(mu_updates[j___][j][i]#
+                                        (np.log(mu_updates[j___][j][i]#
                                             # 'r'  if int( centers_[i][0]/Delta )%2==
                                             #                     int( centers_[i][1]/Delta )%2 else 'b' 
                                             )# if A[i] not in obs__[1] 
@@ -635,7 +678,7 @@ for (_reversed__,one_border,borders_faster,obstacle_slower,snake_opt_path
                                          ) for i in range(len(A))],
                                              pp=pp,plt_=plt,Title=f"{obs__[0]}",
                                              _paths_=obs__[1])
-                            edge_color_instance_2=[ (-(instance__[i]
+                            edge_color_instance_2=[ ((instance__[i]
                                                       #'r'  if int( centers_[i][0]/Delta )%2==
                                                             # int( centers_[i][1]/Delta )%2 else 'b' 
                                                 ) #if A[i] not in 
@@ -650,18 +693,19 @@ for (_reversed__,one_border,borders_faster,obstacle_slower,snake_opt_path
                                      )
                         if Plot_Instance_2:
                             for j___,Paths_Spatial_ in enumerate([Paths_NormalIG,
-                                    PB_Paths_Spatial_, PA_Paths_Spatial_]):
+                                    PB_Paths_Spatial_, PA_Paths_Spatial_,
+                                    Paths_naive]):
                                 for j,obs__ in enumerate(Paths_Spatial_):
                                     # edge_color_instance_2=
                                     get_plot(G=G_2,
-                                             edge_color_=[ (-np.log(
+                                             edge_color_=[ (np.log(
                                         mu_updates[j___][j][i])#_edge_color_instance_2[i] 
                                         # if A[i] not in obs__[1] else 
                                         # float("NaN")#'k'
                                         ) for i in range(len(A))],
                                              pp=pp,plt_=plt,Title=f"{obs__[0]}",
                                              _paths_=obs__[1])
-                            edge_color_instance_2=[ (-instance__[i]#_edge_color_instance_2[i] 
+                            edge_color_instance_2=[ (instance__[i]#_edge_color_instance_2[i] 
                                     # if A[i] not in Paths_expert[-1][1] 
                                     # else float("NaN")#-instance__[i]#'k'
                                     ) for i in range(len(A))]
@@ -669,11 +713,15 @@ for (_reversed__,one_border,borders_faster,obstacle_slower,snake_opt_path
                                      pp=pp,plt_=plt,
                                      Title=f"{Paths_expert[-1][0]}",
                                      _paths_=Paths_expert[-1][1])
-                        plot_regret_t([PB_prior_Spatial["name"],
-                                       PA_prior_Spatial["name"]],
+                        plot_regret_t(["Naive",
+                                        PB_prior_Spatial["name"],
+                                        PA_prior_Spatial["name"]
+                                       ],
                                       regret_NormalIG,
-                                      [PB_regret_Spatial_,
-                                       PA_regret_Spatial_],pp,plt)
+                                      [regret_naive,
+                                       PB_regret_Spatial_,
+                                       PA_regret_Spatial_
+                                       ],pp,plt)
                         if pp_bol:
                             pp.close()
                 if output_data_file:

@@ -40,7 +40,28 @@ class truth_sampler():
     # def sample(self):
     #     return self.sampler_function(self.args)
 
+def scientific_notation(x):
+    return '{:.2e}'.format(x)
 
+def round_format(val):
+    return (scientific_notation(val) if 0<abs(val)<.01 else np.round(
+        val,2)) if 0<abs(val)<1. else (np.round(val,2) if 0<abs(val)<10. else (
+            scientific_notation(val) if abs(val)>100 else (
+                np.round(val,2) if val>0 else val)))
+
+def format_distrib_name(distrib_name):
+    st__ = ""
+    distrib_name_list = distrib_name.split("_")
+    if len(distrib_name_list)==1:
+        st__ += f"{distrib_name}"
+    elif len(distrib_name_list)==2:
+        st__ += (distrib_name.split("_")[0] + r" $(\epsilon = " +
+                 distrib_name.split("_")[1] + ")$")
+    elif 3 <= len(distrib_name_list) <= 4:
+        st__ += f"{distrib_name_list[-3]} {distrib_name_list[-2]} ".replace(
+            "gaussian","Gaussian")
+        st__ += r"$(\varphi = " + f"{distrib_name_list[-1]})$"
+    return st__
 
 
 @timer_func
@@ -54,6 +75,7 @@ def TS_Stationary(T_iter,G,truth_sampler,d_all_arcs,Distrib_#,borders_faster,obs
         for j_,a in enumerate(A):
             map_index_A[a[1],a[0]] = j_
     regret=[]
+    instant_regret=[]
     Paths=[]
     Observed_values = []
     Paths_expert=[]
@@ -63,6 +85,7 @@ def TS_Stationary(T_iter,G,truth_sampler,d_all_arcs,Distrib_#,borders_faster,obs
     # score_iter_=[0 for tm_snp in curve_time_snapshots]
     for d_,distrib_ in enumerate(Distrib_):
         regret.append([])
+        instant_regret.append([])
         Paths.append([])
         Observed_values.append([])
         # Paths_expert.append([])
@@ -134,11 +157,18 @@ def TS_Stationary(T_iter,G,truth_sampler,d_all_arcs,Distrib_#,borders_faster,obs
                 #                      for j_,a in enumerate(A)},
                 #         d_all_arcs,
                 #         source,target)#,timelimit=3600.0,debug=1,debug_sp=True)
-            if distrib_.name=="Naive" and all([distrib_.N[map_index_A[
+            if "Naive" in distrib_.name and all([distrib_.N[map_index_A[
                     a]]>0 for a in sol]) and distrib_.epsilon>=np.random.random():
                 n_tabu = 15
-                tabu_arc = sol[np.random.randint(min(n_tabu,len(sol)), max(
-                    len(sol)-n_tabu,n_tabu) )]
+                try:
+                    tabu_arc = sol[np.random.randint(min(n_tabu,len(sol),
+                            len(sol)-n_tabu), max(
+                                len(sol)-n_tabu,n_tabu) )]
+                except IndexError:
+                    n_tabu = 3
+                    tabu_arc = sol[np.random.randint(min(n_tabu,len(sol),
+                            len(sol)-n_tabu), max(
+                                len(sol)-n_tabu,n_tabu) )]
                 posterior_sample_log_speed[map_index_A[tabu_arc]] = - abs(
                     min(posterior_sample_log_speed)) * 6
                 (dist_source_all,pred_
@@ -175,33 +205,40 @@ def TS_Stationary(T_iter,G,truth_sampler,d_all_arcs,Distrib_#,borders_faster,obs
             Time_[d_].append(time()-t1_)
             # regret[d_].append( sum([ d_all_arcs[a]/scen_log_speed[map_index_A[a]] for a in sol]) - 
             #               sum([ d_all_arcs[a]/scen_log_speed[map_index_A[a]] for a in expert_sol])  )
-            delta___ = sum([ d_all_arcs[a]/#np.exp(
+            delta___ = (sum([ d_all_arcs[a]/#np.exp(
                 truth_sampler.mean[#map_index_A[
                     a]#])
                 for a in sol]) - sum(
                     [ d_all_arcs[a]/#np.exp(
                         truth_sampler.mean[#map_index_A[
                             a]#]) 
-                        for a in expert_sol])
+                        for a in expert_sol]))
             regret[d_].append(( delta___ + 
                           (regret[d_][-1]*t if t>0 else 0)   )/ (t+1) )
-            assert(delta___ >-.1**3 )
+            instant_regret[d_].append( delta___  )
+            # assert(delta___ >-.1**3 )
             if  True:#delta___ > delta___0[d_]*2. or delta___<=.1**4 or t+1==T_iter:#t>0 and (( (t+1)/T_iter) * 4  ) % 1 < 1/T_iter:
-                st=(f"{distrib_.name}_Iter={t+1}/{T_iter}," +
-                    f" Acc. Pseudo-Regret={np.round(regret[d_][-1],2)}")
-                print(st + f", Marginal Pseudo-Regret={np.round(delta___,2)}")
+                # st = f"{distrib_.name}_Iter={t+1}/{T_iter}" 
+                # st += f", Marginal Pseudo-Regret={np.round(delta___,2)}"
+                # print(st +  f", Acc. Pseudo-Regret={np.round(regret[d_][-1],2)}")
+                st = (format_distrib_name(distrib_.name) + f" $t = {t+1}$ " + 
+                       r"$\frac{\mathcal{R}_t}{t z^*} = " +
+                       f"{round_format(regret[d_][-1]/exp_obj)}$ " +
+                       r"$\frac{\Delta_t}{ z^*} = " + f"{round_format(delta___/exp_obj)}$")
+                print(st)
+                # if delta___<.1: print("great // regret is zero!")
                 Paths[d_].append((st,sol))
                 Observed_values[d_].append([ scen_log_speed[map_index_A[a]] for a in sol])
                 mu_updates[d_].append(np.copy(posterior_sample_log_speed#distrib_.mu#
                                       ))
             delta___0[d_]=delta___
         # if  t+1==T_iter:
-        Paths_expert.append(("Expert",expert_sol))
+        Paths_expert.append(("",expert_sol))
         # if (t+1) in curve_time_snapshots:
         #     for d_,distrib_ in enumerate(Distrib_):
         #         if regret[d_][-1]==np.min([regret[d____][-1] for d____ in range(len(Distrib_))]):
         #             score_iter_[d_]+=1
-    return regret,Paths,Observed_values,Paths_expert,mu_updates,Time_,Exp_obj#,score_iter_
+    return regret,Paths,Observed_values,Paths_expert,mu_updates,Time_,Exp_obj,instant_regret#,score_iter_
 
 
 
