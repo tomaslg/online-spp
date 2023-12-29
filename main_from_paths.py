@@ -382,6 +382,8 @@ def set_function_as_kernel_on_G(dist_for_kernel_cmp,map_index_A,kernel_func,
         return phi___
     return kernel
 if __name__ == "__main__":
+    #Windows: FOR /L %i IN (0,1,99) DO python main_from_paths.py 150 %i
+    #Linux: for number in {0..99}; do python main_from_paths.py 150 $number; done
     v_real = 40#km/h
     v_real = v_real / 3600
     _paths_dir = os.path.join(os.path.join(
