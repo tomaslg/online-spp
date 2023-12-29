@@ -405,6 +405,7 @@ if __name__ == "__main__":
         t_s_index = -1
     pp = T_iter==2
     id_run = np.random.randint(2**31)
+    np.random.seed(10)
     only_show_observed_arcs = not run_spatial
     if pp: pp = PdfPages(os.path.join(_paths_dir,
                         f"real_instance_run_{id_run}"+
@@ -528,7 +529,8 @@ if __name__ == "__main__":
     # spatial_distribution = Spatial_Metric(prior_Spatial)
     if pp:
         from plot_util import (plot_distribution,plot_histogram_sigma,
-                               plot_real_life_instance,plot_regret_t)
+                               # plot_real_life_instance,
+                               plot_regret_t)
         # plot_histogram_sigma(non_corrated_dist,
         #     pp,plt,"Histogram_sigma2_before_training")
         # # plot_histogram_sigma(PA_spatial_distribution,
@@ -611,9 +613,9 @@ if __name__ == "__main__":
                               if not a in path[1] and
                               not (a[1],a[0]) in path[1]
                               else "NaN") ])
-                plot_real_life_instance(values,"Expert" + #f"Expert [it={j+1}]"+
-                            f" Objective = {np.round(Exp_obj[j]/60,2)} [min]"
-                            ,pp,plt,color_scale_='gist_yarg')
+                # plot_real_life_instance(values,"Expert" + #f"Expert [it={j+1}]"+
+                #             f" Objective = {np.round(Exp_obj[j]/60,2)} [min]"
+                #             ,pp,plt,color_scale_='gist_yarg')
                 values = list()
                 for i,a in enumerate(G_.edges()):
                     value = min(mean_real_instance[a]*1000,20
@@ -621,8 +623,8 @@ if __name__ == "__main__":
                     values.append([0,nodes[a[0]][0],nodes[a[0]][1],
                             nodes[a[1]][0],nodes[a[1]][1],
                             value ])
-                if j==len(Paths_expert)-1:
-                    plot_real_life_instance(values,"Beijing",pp,plt)
+                # if j==len(Paths_expert)-1:
+                #     plot_real_life_instance(values,"Beijing",pp,plt)
         
             for j__ in range(len(Time_)):
             # for j in range(len(mu_updates[j__])):
@@ -647,12 +649,12 @@ if __name__ == "__main__":
                                   if not a in Paths_[j__][j][1] and
                                   not (a[1],a[0]) in Paths_[j__][j][1]
                                   else "NaN") ])
-                plot_real_life_instance(values,("Independent" if j__==0 else
-                        "Spatial_PA" if run_spatial else
-                        f"Naive_{np.round(.1 + ((init_naive + j__ - 1) * .2),2)}"
-                        )+f"_it={j+1}"+
-                        f"_Pseudo-Regret={np.round(delta_[j__][j],2)}",
-                        pp,plt)
+                # plot_real_life_instance(values,("Independent" if j__==0 else
+                #         "Spatial_PA" if run_spatial else
+                #         f"Naive_{np.round(.1 + ((init_naive + j__ - 1) * .2),2)}"
+                #         )+f"_it={j+1}"+
+                #         f"_Pseudo-Regret={np.round(delta_[j__][j],2)}",
+                #         pp,plt)
                 values = list()
                 for i in range(len(G_.edges())):
                     a = mapping_arc_id[i]
@@ -662,10 +664,10 @@ if __name__ == "__main__":
                                 ) 
                     values.append([0,nodes[a[0]][0],nodes[a[0]][1],
                                 nodes[a[1]][0],nodes[a[1]][1],value ])
-                plot_real_life_instance(values,("Independent" if j__==0 else
-                        "Spatial_PA" if run_spatial else
-                        f"Naive_{np.round(.1 + ((init_naive + j__ - 1) * .2),2)}")+f"_it={j+1}",
-                        pp,plt)
+                # plot_real_life_instance(values,("Independent" if j__==0 else
+                #         "Spatial_PA" if run_spatial else
+                #         f"Naive_{np.round(.1 + ((init_naive + j__ - 1) * .2),2)}")+f"_it={j+1}",
+                #         pp,plt)
             
         plot_regret_t([("Spatial_" + PA_prior_Spatial["name"]
                         ) if run_spatial else prior_Naive[j__]["name"]

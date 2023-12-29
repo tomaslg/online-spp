@@ -65,7 +65,7 @@ class LegendObject(object):
 # os.path.join(#os.path.dirname(os.path.dirname(
 Output_dir = os.path.dirname(os.getcwd())#)),
     # "output5")
-Output_dir = [os.path.join(Output_dir,"output9")#,os.path.join(Output_dir,"output7")
+Output_dir = [os.path.join(Output_dir,"output_beta3_alpha1")#,os.path.join(Output_dir,"output7")
               ]
 Name_out_file = ["path_based.pdf","path_aggregated.pdf"
                  ]
@@ -284,6 +284,11 @@ for output_dir in Output_dir:
                         f"SIMULATION_Regret_{kernel_name}_"+
                         f"norm{norm_}{'_reversed' if _reversed__ else ''}"+
                             instance___+".csv"))
+                    registered_results.drop(
+                        registered_results[
+                            registered_results["distribution"]=="Naive "
+                            ].index, inplace=True)
+                    registered_results.reset_index(drop=True, inplace=True)
                     for key_exp,index in registered_results.groupby(
                             _columns).groups.items():
                         for ind_col,_col in enumerate(_columns):
@@ -475,7 +480,7 @@ for key_exp,curve_indices in avg_regret_df.groupby([
         ).groups.items():
     first_ = True
     curve = avg_regret_df.loc[curve_indices]
-    curve_err = std_regret_df.loc[curve_indices]/500**.5
+    # curve_err = std_regret_df.loc[curve_indices]/500**.5
     print(key_exp[0])
     for key_comp_index,key_comp  in enumerate(key_exp[1:2]):
         st_ += ("" if non_repeating_keys[key_comp_index]==key_comp else ( 
