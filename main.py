@@ -38,10 +38,7 @@ def gaussian(theta,rho):
 
 def exponential(theta,rho):
     return np.exp(-rho/theta)
-Kernels={#"hyperbolic" : hyperbolic , 
-        # "gaussian" : gaussian , 
-        "exponential" : exponential
-         }
+
 def general_multiplication(__theta_,dist__):
     if type(__theta_) is str:
         __theta_ = [float(i) for i in __theta_.split("_")]
@@ -75,12 +72,25 @@ def get_next_type_arg(next_index, _type=int):
     except IndexError:
         return 0
 
-output_dir=os.path.join(os.path.dirname(os.getcwd()),"output9")
+
+#python main.py 50 51 1 0 1 500
+#python main.py 50 51 1 0 3 500
+#python main.py 50 51 1 0 4 500
+#python main.py 50 51 2 0 1 500
+#python main.py 50 51 2 0 3 500
+#python main.py 50 51 2 0 4 500
+#python main.py 50 51 3 0 1 500
+#python main.py 50 51 3 0 3 500
+#python main.py 50 51 3 0 4 500
+#python main.py 50 51 4 0 1 500
+#python main.py 50 51 4 0 3 500
+#python main.py 50 51 4 0 4 500
+
+output_dir=os.path.join(os.path.dirname(os.getcwd()),"output_beta6_alpha5")
 if not os.path.exists(output_dir):
     os.makedirs(output_dir)
 
-pp_bol = True
-norm_range_ = range(2,3)
+pp_bol = False
 
 T_iter_set_size = get_next_type_arg(1) #int(sys.argv[1])
 if T_iter_set_size==0:
@@ -92,12 +102,16 @@ if T_iter_set_size[1]==0:
 
 index_instance = get_next_type_arg(3)
 index_theta = get_next_type_arg(4)
-
+index_norm_range = get_next_type_arg(5)
 
 T_iter_set = range(T_iter_set_size[0], T_iter_set_size[1])
 N = 20
-nruns = 1
-output_data_file = False
+nruns = get_next_type_arg(6)
+v_input = get_next_type_arg(7)
+np.random.seed(10)
+# v_input = v_input if v_input>0 else np.random.randint(1,100)
+nruns = nruns if nruns > 0 else 1
+output_data_file = True
 all_instances_ = [#reversed,one-border,start-get-out-of-the-slow-zone-and-come-back,
                   #avoid-an-obstacle,snake##,chessboard-non-smooth-no-theta
     # [True,True,False,False,False],#37(1)
@@ -123,6 +137,20 @@ if index_instance>0:
     all_instances_ = [all_instances_[index_instance - 1]]
 if index_theta>0:
     ___theta____ = [___theta____[index_theta - 1]]
+
+# if index_norm_range==0 or index_norm_range>4 ; 1- and 2- norms gaussian and exponential kernels
+norm_range_ = range(1,3)
+Kernels={#"hyperbolic" : hyperbolic , 
+    "gaussian" : gaussian , 
+    "exponential" : exponential
+     }
+if 1<=index_norm_range<=2:#1-norm only exponential#2-norm exponential and Gaussian
+    norm_range_ = [norm_range_[index_norm_range - 1]]
+elif index_norm_range==3:#2-norm Gaussian only
+    Kernels = {"gaussian" : gaussian}
+elif index_norm_range==4:#2-norm exponential only
+    norm_range_ = range(2,3)
+    Kernels = {"exponential" : exponential}
 
 # _reversed__ = True
 # borders_faster = True
@@ -233,8 +261,13 @@ for (_reversed__,one_border,borders_faster,obstacle_slower,snake_opt_path
                         M=3#3 for regular chessboard
                         Delta= N / (2**M)
                         
-                        _alpha__ = 50. / (1 if one_border else 1)
-                        _beta__ = .05 * (3.5 if one_border else 1)
+                        _alpha__ = 5#1#2.1#3#11#5
+                        _beta__ = 6#1.65#3#15#6
+                        _kappa__= (_beta__ / (
+                            _alpha__ - 1) / (4 if one_border else (
+                            25 if obstacle_slower else (
+                                16 if snake_opt_path else 1)))
+                                ) if _alpha__>1 else 1
                         Plot_Instance_1 = False
                         Plot_Instance_2 = not Plot_Instance_1
                         
@@ -400,14 +433,17 @@ for (_reversed__,one_border,borders_faster,obstacle_slower,snake_opt_path
                         
                         
                         sigma = np.ones(len(A)) * np.log(1.2) 
-                        v_prior = .01 * v_real *(20 if obstacle_slower else 1
-                                    ) * (50 if borders_faster else 2) * (
-                                        27 if one_border else 1)
+                        v_prior = v_input if v_input>0 else np.exp(
+                            2 if one_border else (
+                                3 if obstacle_slower else (
+                                    -2 if snake_opt_path else (
+                                        4 if borders_faster else
+                                        np.log(v_real)))))
                         
                         prior_NormalIG = {}
                         prior_NormalIG["mu"] = np.ones(len(A)
                                                        ) * np.log(v_prior)
-                        prior_NormalIG["kappa"] = np.ones(len(A)) 
+                        prior_NormalIG["kappa"] = _kappa__ * np.ones(len(A)) 
                         prior_NormalIG["alpha"] = np.ones(len(A)
                                                           ) *_alpha__
                         prior_NormalIG["beta"] = np.ones(len(A)

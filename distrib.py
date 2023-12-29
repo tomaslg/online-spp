@@ -38,7 +38,7 @@ def is_pos_def(x):
 
 class NormalIG:
     def __init__(self,prior):
-        self.name="Independent Gaussian"
+        self.name="IGM"
         self.mu0=prior["mu"]
         self.kappa0=prior["kappa"]
         self.alpha0=prior["alpha"]
