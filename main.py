@@ -86,7 +86,7 @@ def get_next_type_arg(next_index, _type=int):
 #python main.py 50 51 4 0 3 500
 #python main.py 50 51 4 0 4 500
 
-output_dir=os.path.join(os.path.dirname(os.getcwd()),"output_beta6_alpha5")
+output_dir=os.path.join(os.path.dirname(os.getcwd()),"output_beta3_alpha1")
 if not os.path.exists(output_dir):
     os.makedirs(output_dir)
 
@@ -261,8 +261,8 @@ for (_reversed__,one_border,borders_faster,obstacle_slower,snake_opt_path
                         M=3#3 for regular chessboard
                         Delta= N / (2**M)
                         
-                        _alpha__ = 5#1#2.1#3#11#5
-                        _beta__ = 6#1.65#3#15#6
+                        _alpha__ = 1#1#2.1#3#11#5
+                        _beta__ = 3#1.65#3#15#6
                         _kappa__= (_beta__ / (
                             _alpha__ - 1) / (4 if one_border else (
                             25 if obstacle_slower else (
