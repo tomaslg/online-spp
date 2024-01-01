@@ -406,8 +406,8 @@ if __name__ == "__main__":
     except IndexError:
         t_s_index = -1
     pp = T_iter==2
+    np.random.seed(t_s_index + 10)
     id_run = np.random.randint(2**31)
-    np.random.seed(10)
     only_show_observed_arcs = not run_spatial
     if pp: pp = PdfPages(os.path.join(_paths_dir,
                         f"real_instance_run_{id_run}"+
