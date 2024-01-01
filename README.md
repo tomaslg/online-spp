@@ -12,6 +12,8 @@ Linux:
 ```
 for number in {0..99}; do python main_from_paths.py 150 $number; done
 ```
+## Data:
+https://github.com/felipelagos/beijing-instance.git
 
 # Run artificial instances to replicate the results in the paper:
 
