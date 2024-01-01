@@ -17,9 +17,13 @@ for number in {0..99}; do python main_from_paths.py 150 $number; done
 https://github.com/felipelagos/beijing-instance.git
 
 Folder containing the codes should look like:
+
 /path_to_folder/online-spp -> project folder
+
 /path_to_folder/data/new_large/nodes.csv: format -> id;latitude;longitude
+
 /path_to_folder/data/new_large/arcs.csv: format -> id;node1;node2;valores
+
 
 # Run artificial instances to replicate the results in the paper:
 
