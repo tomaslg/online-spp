@@ -86,9 +86,6 @@ def get_next_type_arg(next_index, _type=int):
 #python main.py 50 51 4 0 3 500
 #python main.py 50 51 4 0 4 500
 
-output_dir=os.path.join(os.path.dirname(os.getcwd()),"output_beta3_alpha1")
-if not os.path.exists(output_dir):
-    os.makedirs(output_dir)
 
 pp_bol = False
 
@@ -108,9 +105,19 @@ T_iter_set = range(T_iter_set_size[0], T_iter_set_size[1])
 N = 20
 nruns = get_next_type_arg(6)
 v_input = get_next_type_arg(7)
+
+
+_alpha__ = 1#1#2.1#3#11#5
+_beta__ = 3#1.65#3#15#6
+
 np.random.seed(10)
 # v_input = v_input if v_input>0 else np.random.randint(1,100)
 nruns = nruns if nruns > 0 else 1
+output_dir=os.path.join(os.path.dirname(os.getcwd()),
+    f"output_beta{_beta__}_alpha{_alpha__}_{nruns}_{T_iter_set_size[0]}"#"output_beta3_alpha1"
+    )
+if not os.path.exists(output_dir):
+    os.makedirs(output_dir)
 output_data_file = True
 all_instances_ = [#reversed,one-border,start-get-out-of-the-slow-zone-and-come-back,
                   #avoid-an-obstacle,snake##,chessboard-non-smooth-no-theta
@@ -261,8 +268,6 @@ for (_reversed__,one_border,borders_faster,obstacle_slower,snake_opt_path
                         M=3#3 for regular chessboard
                         Delta= N / (2**M)
                         
-                        _alpha__ = 1#1#2.1#3#11#5
-                        _beta__ = 3#1.65#3#15#6
                         _kappa__= (_beta__ / (
                             _alpha__ - 1) / (4 if one_border else (
                             25 if obstacle_slower else (
