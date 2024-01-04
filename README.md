@@ -27,6 +27,8 @@ Folder containing the codes should look like:
 
 # Run artificial instances to replicate the results in the paper:
 
+
+Windows: 
 ```
 python main.py 50 51 1 0 1 500
 python main.py 50 51 1 0 3 500
@@ -40,4 +42,22 @@ python main.py 50 51 3 0 4 500
 python main.py 50 51 4 0 1 500
 python main.py 50 51 4 0 3 500
 python main.py 50 51 4 0 4 500
+python main.py 150 151 1 0 1 20
+python main.py 150 151 1 0 3 20
+python main.py 150 151 1 0 4 20
+python main.py 150 151 2 0 1 20
+python main.py 150 151 2 0 3 20
+python main.py 150 151 2 0 4 20
+python main.py 150 151 3 0 1 20
+python main.py 150 151 3 0 3 20
+python main.py 150 151 3 0 4 20
+python main.py 150 151 4 0 1 20
+python main.py 150 151 4 0 3 20
+python main.py 150 151 4 0 4 20
+
+```
+Linux: 
+```
+for number1 in {1..4}; do for number2 in {1,3,4}; do python main.py 50 51 $number1 0 $number2 500; done; done
+for number1 in {1..4}; do for number2 in {1,3,4}; do python main.py 150 151 $number1 0 $number2 20; done; done
 ```
