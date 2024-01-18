@@ -30,31 +30,8 @@ Folder containing the codes should look like:
 
 Windows: 
 ```
-python main.py 50 51 1 0 1 500
-python main.py 50 51 1 0 3 500
-python main.py 50 51 1 0 4 500
-python main.py 50 51 2 0 1 500
-python main.py 50 51 2 0 3 500
-python main.py 50 51 2 0 4 500
-python main.py 50 51 3 0 1 500
-python main.py 50 51 3 0 3 500
-python main.py 50 51 3 0 4 500
-python main.py 50 51 4 0 1 500
-python main.py 50 51 4 0 3 500
-python main.py 50 51 4 0 4 500
-python main.py 150 151 1 0 1 20
-python main.py 150 151 1 0 3 20
-python main.py 150 151 1 0 4 20
-python main.py 150 151 2 0 1 20
-python main.py 150 151 2 0 3 20
-python main.py 150 151 2 0 4 20
-python main.py 150 151 3 0 1 20
-python main.py 150 151 3 0 3 20
-python main.py 150 151 3 0 4 20
-python main.py 150 151 4 0 1 20
-python main.py 150 151 4 0 3 20
-python main.py 150 151 4 0 4 20
-
+FOR /L %i IN (1,1,4) DO FOR /L %j IN (1 3 4) DO python main.py 50 51 %i 0 %j 500
+FOR /L %i IN (1,1,4) DO FOR /L %j IN (1 3 4) DO python main.py 150 151 %i 0 %j 20
 ```
 Linux: 
 ```
