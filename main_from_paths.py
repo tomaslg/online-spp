@@ -408,7 +408,7 @@ if __name__ == "__main__":
         t_s_index = -1
         id_run = np.random.randint(2**31)
     pp = T_iter==2
-    np.random.seed(t_s_index + 10)
+    np.random.seed(id_run + 10)
     only_show_observed_arcs = not run_spatial
     if pp: pp = PdfPages(os.path.join(_paths_dir,
                         f"real_instance_run_{id_run}"+
