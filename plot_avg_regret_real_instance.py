@@ -153,7 +153,7 @@ if __name__ == "__main__":
      for regret_val, indices in 
      regret_all_realizations.groupby(
         "Naive_0.1").indices.items(
-            ) if len(indices)>=3}
+            ) if len(indices)>=10}
     
     approaches_instance_convergence = defaultdict(dict)
     approaches_instance_not_converged = defaultdict(dict)

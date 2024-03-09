@@ -30,8 +30,30 @@ font_dict = {'fontsize': 'x-large', 'fontproperties': font}
 def replace_infty_by_max(np, ar):
     max_no_infty = max( [a for a in ar if np.abs(a)!=np.inf] )
     min_no_infty = min( [a for a in ar if np.abs(a)!=np.inf] )
-    return np.array( [a  if np.abs(a)!=np.inf else (
+    quant95 = np.quantile(ar, .8)
+    quant05 = np.quantile(ar, .2)
+    return np.array( [(a if quant05 <= a <= quant95 else (
+        quant05 if a<quant05 else quant95)
+                       )  if np.abs(a)!=np.inf else (
         max_no_infty if np.sign(a)==1 else min_no_infty) for a in ar])
+def replace_by_bins(np, ar, number_of_bins = 76):
+    # np.sort(ar)
+    sorted_indices = sorted(range(len(ar)), key=lambda i: ar[i])
+    edge_color_ = {}
+    bin_size = int(np.ceil(len(ar) / number_of_bins))
+    bin_average = None
+    value_for_min_bins = float("Inf")
+    cut_off = .1
+    for i in range(number_of_bins):
+        bin_elements = [sorted_indices[j] for j in range(
+            i * bin_size, min((i + 1) * bin_size, len(ar)))]
+        value_for_min_bins = min(np.mean(ar[bin_elements]), value_for_min_bins)
+        bin_average = np.mean(ar[bin_elements]) if cut_off <= (
+            i / number_of_bins) <= (1 - cut_off) else bin_average
+        for j in bin_elements:
+            edge_color_[j] = bin_average
+    return np.array([edge_color_[i] if edge_color_[i]!=None else 
+        value_for_min_bins for i in range(len(ar))])
 
 def plot_distribution(distrib_,pp,plt_,Title=""):
     # Yx=distrib_.sample_poserior()
@@ -90,6 +112,7 @@ def get_plot(G,edge_color_,pp,plt_,Title="",_paths_=[]):
     if all([type(ec) is float or isinstance(ec, np.floating)
             for ec in edge_color_]):
         edge_color_ = replace_infty_by_max(np, edge_color_)
+        # edge_color_ = replace_by_bins(np, edge_color_)
     nx.draw_networkx(G, with_labels = False,pos=pos,
                      node_size=1/(len(G.nodes())**.5),
                      arrowsize=60/(len(G.nodes())**.5),

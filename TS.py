@@ -67,7 +67,7 @@ def format_distrib_name(distrib_name):
 @timer_func
 def TS_Stationary(T_iter,G,truth_sampler,d_all_arcs,Distrib_#,borders_faster,obstacle_slower
                   ):
-    nsample = 20
+    nsample = 1
     # limit_in_seconds = 1000 # 0 to shuft off
     V,A = get_nodes_and_edges(G,False)
     map_index_A = {a : j_ for j_,a in enumerate(A)}
