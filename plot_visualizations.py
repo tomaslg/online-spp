@@ -65,7 +65,7 @@ class LegendObject(object):
 # os.path.join(#os.path.dirname(os.path.dirname(
 Output_dir = os.path.dirname(os.getcwd())#)),
     # "output5")
-Output_dir = [os.path.join(Output_dir,"output_beta3_alpha1")#,os.path.join(Output_dir,"output7")
+Output_dir = [os.path.join(Output_dir,"output_beta3_alpha1_100_50")#,os.path.join(Output_dir,"output7")
               ]
 Name_out_file = ["path_based.pdf","path_aggregated.pdf"
                  ]

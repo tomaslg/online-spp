@@ -154,19 +154,29 @@ if __name__ == "__main__":
      regret_all_realizations.groupby(
         "Naive_0.1").indices.items(
             ) if len(indices)>=10}
-    
+    _min_total_regret_per_run_index = {index : min([
+                regret_all_realizations.loc[index + T - 1, c_]
+                for c_ in approaches_keys])
+        for indices in experiments_with_the_same_initial_regret.values()
+        for index in indices}
     approaches_instance_convergence = defaultdict(dict)
     approaches_instance_not_converged = defaultdict(dict)
     approaches_instance_sum_total_regret = defaultdict(dict)
     approaches_instance_sum_pseudo_regret = defaultdict(dict)
+    approaches_instance_num_wins = defaultdict(dict)
     for regret_val, indices in experiments_with_the_same_initial_regret.items():
         for c_ in approaches_keys:
             approaches_instance_sum_total_regret[
                 regret_val][c_] = sum(regret_all_realizations.loc[
-                    [index + 149 for index in indices], c_])
+                    [index + T - 1 for index in indices], c_])
             approaches_instance_sum_pseudo_regret[
                 regret_val][c_] = sum(regret_all_realizations.loc[
-                    [index + 149 for index in indices], c_ + "_delta"])
+                    [index + T - 1 for index in indices], c_ + "_delta"])
+            approaches_instance_num_wins[regret_val][c_] = 0
+            for index in indices:
+                approaches_instance_num_wins[regret_val][c_] += 1 if (
+                    regret_all_realizations.loc[index + T - 1, c_
+                        ] <= _min_total_regret_per_run_index[index]) else 0
         for index in indices:
             period, experiment = regret_all_realizations.loc[
                 index, ["period", "experiment"]]
