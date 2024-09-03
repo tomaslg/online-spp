@@ -1,5 +1,7 @@
 # online-spp
 Implements Thompson Sampling Algorithm using a Gaussian Field distribution assumption over arcs velocity
+From the paper: "The Online Shortest Path Problem: Learning Travel Times Using a Multiarmed Bandit Framework"
+https://doi.org/10.1287/trsc.2023.0196
 
 Execute the codes inside the project folder.
 
@@ -22,7 +24,7 @@ Folder containing the codes should look like:
 
 /path_to_folder/data/new_large/nodes.csv: format -> id;latitude;longitude
 
-/path_to_folder/data/new_large/arcs.csv: format -> id;node1;node2;valores
+/path_to_folder/data/new_large/arcs.csv: format -> id;node1;node2;times
 
 
 # Run artificial instances to replicate the results in the paper:
